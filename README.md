@@ -42,11 +42,11 @@ To integrate the FuturaeKit SDK into your project, copy `futuraekit.aar` into th
 Then, in your modules `build.gradle` (the one under "app"), add the following dependencies:
 ```
 compile 'com.squareup.retrofit2:retrofit:2.3.0'
-    compile 'com.squareup.retrofit2:converter-moshi:2.3.0'
-    compile 'com.squareup.moshi:moshi-adapters:1.4.0'
-    implementation 'com.squareup.okhttp3:okhttp:3.8.0'
-    compile 'com.squareup.okhttp3:logging-interceptor:3.8.0'
-    compile(name:'futuraekit', ext:'aar')
+compile 'com.squareup.retrofit2:converter-moshi:2.3.0'
+compile 'com.squareup.moshi:moshi-adapters:1.4.0'
+implementation 'com.squareup.okhttp3:okhttp:3.8.0'
+compile 'com.squareup.okhttp3:logging-interceptor:3.8.0'
+compile(name:'futuraekit', ext:'aar')
 ```
 
 ![][gradle-app]
