@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:tools="http://schemas.android.com/tools"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              tools:context="com.futurae.futuraedemo.ui.MainActivity"
+    >
+
+    <Button
+        android:id="@+id/main_btn_enroll"
+        style="@style/AppTheme.Borderless"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/main_btn_enroll"
+        />
+
+    <Button
+        android:id="@+id/main_btn_logout"
+        style="@style/AppTheme.Borderless"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/main_btn_logout" />
+
+    <Button
+        android:id="@+id/main_btn_qr_code_auth"
+        style="@style/AppTheme.Borderless"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/main_btn_qr_code_auth"
+        />
+
+    <Button
+        android:id="@+id/main_btn_totp"
+        style="@style/AppTheme.Borderless"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/main_btn_totp" />
+
+</LinearLayout>

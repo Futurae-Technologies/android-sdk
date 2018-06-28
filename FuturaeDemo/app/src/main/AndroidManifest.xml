@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="com.futurae.futuraedemo">
+
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+  <uses-permission android:name="android.permission.CAMERA" />
+  <uses-feature android:name="android.hardware.camera" />
+
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+
+  <permission
+    android:name="${applicationId}.permission.C2D_MESSAGE"
+    android:protectionLevel="signature"/>
+  <uses-permission android:name="${applicationId}.permission.C2D_MESSAGE"/>
+
+  <application
+    android:allowBackup="true"
+    android:icon="@mipmap/ic_launcher"
+    android:label="@string/app_name"
+    android:name="com.futurae.futuraedemo.AppMain"
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:supportsRtl="true"
+    android:theme="@style/AppTheme">
+
+    <meta-data
+        android:name="com.google.android.gms.vision.DEPENDENCIES"
+        android:value="barcode"/>
+
+    <receiver
+      android:name="com.google.android.gms.gcm.GcmReceiver"
+      android:exported="true"
+      android:permission="com.google.android.c2dm.permission.SEND">
+      <intent-filter>
+        <action android:name="com.google.android.c2dm.intent.REGISTRATION"/>
+        <action android:name="com.google.android.c2dm.intent.RECEIVE"/>
+
+        <category android:name="${applicationId}"/>
+      </intent-filter>
+    </receiver>
+
+    <service
+      android:name="com.futurae.sdk.gcm.FTRGcmListenerService"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.android.c2dm.intent.RECEIVE"/>
+      </intent-filter>
+    </service>
+
+    <service
+      android:name="com.futurae.sdk.gcm.FTRInstanceIdListenerService"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.android.gms.iid.InstanceID"/>
+      </intent-filter>
+    </service>
+
+    <service
+      android:name="com.futurae.sdk.gcm.FTRRegistrationIntentService"
+      android:exported="false"
+      />
+
+    <activity android:name=".ui.MainActivity">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+
+        <data android:scheme="futurae"/>
+      </intent-filter>
+    </activity>
+
+    <activity
+      android:exported="false"
+      android:name=".ui.FTRQRCodeActivity"
+      android:theme="@style/AppTheme" />
+  </application>
+
+</manifest>

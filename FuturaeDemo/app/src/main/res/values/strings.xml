@@ -1,0 +1,18 @@
+<resources>
+  <string name="app_name">FuturaeDemo</string>
+
+  <!--MAIN-->
+  <string name="main_btn_enroll">Enroll</string>
+  <string name="main_btn_qr_code">Scan to Enroll</string>
+  <string name="main_btn_qr_code_auth">QR Code Auth</string>
+  <string name="main_btn_totp">TOTP Auth</string>
+
+  <!--QR CODE-->
+  <string name="qrcode_title">QR Code</string>
+  <string name="camera_perm_explain">In order to scan a QR code, Futurae requires access to the camera.</string>
+
+  <!--ERRORS-->
+  <string name="error_low_storage">QR code scanning cannot be performed due to low device storage</string>
+    <string name="main_btn_logout">Logout</string>
+
+</resources>
