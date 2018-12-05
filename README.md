@@ -203,7 +203,12 @@ The GCM Listener service (the one provided in the SDK, or your own):
 ```
 
 #### <a id="gcm-token" />GCM Token Registration
-The `FTRRegistrationIntentService` is responsible for registering the app's GCM token to the Futurae server. This is important for the server to be able to issue GCM notifications for your app. The provided service handles this, however if you need to, you can write your own or extend the existing one. The call that registers the GCM token to the Futurae server is `registerPushToken()`, and it is necessary every time the GCM token is generated or is changed by GCM.
+The `FTRRegistrationIntentService` is responsible for registering the app's GCM token to the Futurae server. This is important for the server to be able to issue GCM notifications for your app. The provided service handles this, however if you need to, you can write your own or extend the existing one. In any case, the `FTRRegistrationIntentService` needs to be started in your app in order to handle changes in the GCM token. To start the service, you need to call the `Context.startService()` method; for example, inside your main activity, use the following code:
+```java
+startService(new Intent(packageContext, FTRRegistrationIntentService.class));
+```
+
+If you are implementing your own GCM notification handling, you should register the GCM token to the Futurae server every time it changes. The call that registers the GCM token to the Futurae server is `registerPushToken()`, and it is necessary every time the GCM token is generated or is changed by GCM.
 
 For example, once the app receives a new GCM token (e.g. via an `InstanceIdListenerService`), the token needs to be obtained and registered to the Futurae server using the following code:
 ```java
