@@ -449,7 +449,7 @@ FuturaeClient.sharedClient().sessionInfoById(userId, sessionId, new FuturaeResul
 });
 
 // if you have a session Token
-FuturaeClient.sharedClient().sessionInfoById(userId, sessionId, new FuturaeResultCallback<SessionInfo>() {
+FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionId, new FuturaeResultCallback<SessionInfo>() {
     @Override
     public void success(SessionInfo sessionInfo) {
         // Handle the session
