@@ -11,6 +11,6 @@ public class AppMain extends Application {
 
         super.onCreate();
 
-        FuturaeClient.launch(this);
+        FuturaeClient.launch(this, null);
     }
 }

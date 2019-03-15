@@ -17,23 +17,20 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
-import butterknife.ButterKnife;
-import butterknife.OnClick;
+
 import com.futurae.futuraedemo.R;
 import com.futurae.sdk.FuturaeCallback;
 import com.futurae.sdk.FuturaeClient;
-import com.futurae.sdk.Shared;
 import com.futurae.sdk.approve.ApproveSession;
-import com.futurae.sdk.gcm.FTRApproveNotification;
-import com.futurae.sdk.gcm.FTRNotification;
-import com.futurae.sdk.gcm.FTRRegistrationIntentService;
-import com.futurae.sdk.gcm.FTRUnenrollNotification;
 import com.futurae.sdk.model.Account;
 import com.futurae.sdk.model.CurrentTotp;
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
+import com.futurae.sdk.utils.NotificationUtils;
 import com.google.android.gms.vision.barcode.Barcode;
+
 import java.util.List;
+
+import butterknife.ButterKnife;
+import butterknife.OnClick;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -41,6 +38,8 @@ public class MainActivity extends AppCompatActivity {
     // constants
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
+
+    private AlertDialog approveDialog;
 
     // overrides
     @Override
@@ -63,9 +62,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
 
-        managePermissions();
+        checkAndAskForPermission(Manifest.permission.CAMERA, getString(R.string.camera_perm_explain), 2);
 
-        initRegistrationService();
         initLocalBroadcastReceiver();
 
         // TODO: Handle URI call
@@ -93,12 +91,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        initRegistrationService();
     }
 
     // handlers
@@ -205,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Approve");
         builder.setMessage("Would you like to approve the request?");
-        builder.setNeutralButton("Approve", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton("Approve", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
                 FuturaeClient.sharedClient().approveAuth(session.getUserId(),
                         session.getSessionId(), new FuturaeCallback() {
@@ -238,14 +230,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        AlertDialog dialog = builder.create();
-        dialog.show();
+        approveDialog = builder.create();
+        approveDialog.show();
     }
 
     // private
-    private void managePermissions() {
-        final String permission = Manifest.permission.CAMERA;
-        final int requestID = 1;
+    private void checkAndAskForPermission(final String permission, final String message, final int requestID) {
         final Activity activity = this;
 
         if (ContextCompat.checkSelfPermission(this, permission)
@@ -259,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
                 // sees the explanation, try again to request the permission.
 
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage(getString(R.string.camera_perm_explain))
+                builder.setMessage(message)
                         .setCancelable(false)
                         .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int id) {
@@ -282,15 +272,16 @@ public class MainActivity extends AppCompatActivity {
 
     private void initLocalBroadcastReceiver() {
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(Shared.INTENT_ACCOUNT_UNENROLL_MESSAGE);
-        intentFilter.addAction(Shared.INTENT_APPROVE_AUTH_MESSAGE);
-        intentFilter.addAction(Shared.INTENT_GENERIC_NOTIFICATION_ERROR);
+        intentFilter.addAction(NotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE);
+        intentFilter.addAction(NotificationUtils.INTENT_APPROVE_AUTH_MESSAGE);
+        intentFilter.addAction(NotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR);
+        intentFilter.addAction(NotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE);
 
         LocalBroadcastManager.getInstance(this).registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
 
-                String error = intent.getStringExtra(FTRNotification.PARAM_ERROR);
+                String error = intent.getStringExtra(NotificationUtils.PARAM_ERROR);
                 if (!TextUtils.isEmpty(error)) {
                     Log.e(TAG, "Received Intent '" + intent.getAction() + "' with error: " + error);
                     return;
@@ -299,19 +290,18 @@ public class MainActivity extends AppCompatActivity {
                 switch(intent.getAction()) {
 
                     // TODO: Handle unenroll notification (e.g. refresh lists)
-                    case Shared.INTENT_ACCOUNT_UNENROLL_MESSAGE:
-                        Log.d(TAG, Shared.INTENT_ACCOUNT_UNENROLL_MESSAGE);
+                    case NotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE:
+                        Log.d(TAG, NotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE);
 
-                        String userId = intent.getStringExtra(FTRUnenrollNotification.PARAM_USER_ID);
+                        String userId = intent.getStringExtra(NotificationUtils.PARAM_USER_ID);
                         Log.i(TAG, "Received logout and deleted account: " + userId);
                         break;
 
-                    // TODO: Handle approve notification (e.g. show approve view)
-                    case Shared.INTENT_APPROVE_AUTH_MESSAGE:
-                        Log.d(TAG, Shared.INTENT_APPROVE_AUTH_MESSAGE);
+                    case NotificationUtils.INTENT_APPROVE_AUTH_MESSAGE:
+                        Log.d(TAG, NotificationUtils.INTENT_APPROVE_AUTH_MESSAGE);
 
                         final ApproveSession session = intent.getParcelableExtra(
-                                FTRApproveNotification.PARAM_APPROVE_SESSION);
+                                NotificationUtils.PARAM_APPROVE_SESSION);
 
                         runOnUiThread(new Runnable() {
                             @Override
@@ -321,40 +311,18 @@ public class MainActivity extends AppCompatActivity {
                         });
                         break;
 
-                    case Shared.INTENT_GENERIC_NOTIFICATION_ERROR:
-                        Log.d(TAG, Shared.INTENT_GENERIC_NOTIFICATION_ERROR);
+                    case NotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE:
+                        if (approveDialog != null && approveDialog.isShowing()) {
+                          approveDialog.dismiss();
+                        }
+                        break;
+
+                    case NotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR:
+                        Log.d(TAG, NotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR);
                         break;
                 }
             }
         }, intentFilter);
-    }
-
-    private void initRegistrationService() {
-        if (!checkPlayServices()) {
-            Log.i(TAG, "No valid Google Play Services APK found.");
-            return;
-        }
-
-        startService(new Intent(this, FTRRegistrationIntentService.class));
-    }
-
-    private boolean checkPlayServices() {
-        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
-
-        int resultCode = apiAvailability.isGooglePlayServicesAvailable(this);
-        if (resultCode == ConnectionResult.SUCCESS) {
-            return true;
-        }
-
-        if (apiAvailability.isUserResolvableError(resultCode)) {
-            apiAvailability.getErrorDialog(this, resultCode, PLAY_SERVICES_RESOLUTION_REQUEST).show();
-
-        } else {
-            Log.i(TAG, "This device is not supported.");
-            finish();
-        }
-
-        return false;
     }
 
     private void showAlert(String title, String message) {

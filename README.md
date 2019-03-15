@@ -14,8 +14,8 @@ This is the Android SDK of Futurae. You can read more about Futurae™ at [futur
    * [Callbacks](#callbacks)
    * [URI Schemes](#uri-schemes)
    * [Push Notifications](#push-notifications)
-      * [GCM Token Registration](#gcm-token-registration)
-      * [GCM Listener Service](#gcm-listener-service)
+      * [FCM Token Registration](#fcm-token-registration)
+      * [FCM Listener Service](#fcm-listener-service)
 			* [Local Intents](#local-intents)
    * [Enroll User](#enroll-user)
    * [Logout User](#logout-user)
@@ -111,17 +111,14 @@ Secondly, in your `res/values` folder make sure to create a file `futurae.xml` w
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="ftr_api_key">{FuturaeApiKey}</string>
-    <string name="ftr_push_gcm_sender_id">{GcmSenderId}</string>
+    <string name="ftr_sdk_id">{FuturaeSdkId}</string>
+    <string name="ftr_sdk_key">{FuturaeSdkKey}</string>
     <string name="ftr_base_url">https://api.futurae.com:443</string>
 
 </resources>
 ```
 
-![][config-xml]
-
-**Note**: Initializing the FuturaeKit SDK like this is `very important`. Replace `{FuturaeApiKey}` with your SDK API key (in case you do not have one yet, use the following placeholder key: `0000000000000000000000000000000000000000`),
-and `{GoogleApiProjectNumber}` with the project number of the Google API you have set up for the GCM (see the [GCM Token Registration](#gcm-token-registration) section for more information).
+**Note**: Initializing the FuturaeKit SDK like this is `very important`. Replace `{FuturaeSdkId}` and `{FuturaeSdkKey}` with your SDK ID and key.
 
 ### <a id="build-your-app" />Build your app
 
@@ -156,63 +153,38 @@ FuturaeClient.sharedClient().handleUri(uriString, new FuturaeCallback() {
 ```
 
 ### <a id="push-notifications" />Push Notifications
-Your app must be set up to receive GCM push notifications from our server. You can choose to receive and handle these notifications yourself, or alternatively you can use the existing infrastructure provided in the SDK. You can find more information on how to setup GCM push notifications for your app in the [Google Cloud Messaging Developer Guide](https://developers.google.com/cloud-messaging/android/client).
+Your app must be set up to receive Firebase Cloud Messaging (FCM) push notifications from our server. You can choose to receive and handle these notifications yourself, or alternatively you can use the existing infrastructure provided in the SDK. You can find more information on how to setup FCM push notifications for your app in the [Firebase Cloud Messaging Developer Guide](https://firebase.google.com/docs/cloud-messaging/).
 
-In order to be able to receive GCM notifications, you need to specify the following components inside the application section of your Manifest:
-
-The GCM Receiver:
+In order to be able to receive FCM notifications, you need to specify the Firebase Messaging service inside the application section of your Manifest:
 ```xml
-<receiver
-  android:name="com.google.android.gms.gcm.GcmReceiver"
-  android:exported="true"
-  android:permission="com.google.android.c2dm.permission.SEND">
-  <intent-filter>
-    <action android:name="com.google.android.c2dm.intent.REGISTRATION"/>
-    <action android:name="com.google.android.c2dm.intent.RECEIVE"/>
-
-    <category android:name="${applicationId}"/>
-  </intent-filter>
-</receiver>
-```
-
-The Instance ID listener service and Registration intent service (the ones provided in the SDK, or your own):
-```xml
-<service
-  android:name="com.futurae.sdk.gcm.FTRInstanceIdListenerService"
-  android:exported="false">
-  <intent-filter>
-    <action android:name="com.google.android.gms.iid.InstanceID"/>
-  </intent-filter>
-</service>
-
-<service
-  android:name="com.futurae.sdk.gcm.FTRRegistrationIntentService"
-  android:exported="false"
-  />
-```
-
-The GCM Listener service (the one provided in the SDK, or your own):
-```xml
-<service
-  android:name="com.futurae.sdk.gcm.FTRGcmListenerService"
-  android:exported="false">
-  <intent-filter>
-    <action android:name="com.google.android.c2dm.intent.RECEIVE"/>
-  </intent-filter>
+<service android:name="com.futurae.sdk.messaging.FTRFcmMessagingService">
+	<intent-filter>
+		<action android:name="com.google.firebase.MESSAGING_EVENT" />
+	</intent-filter>
 </service>
 ```
 
-#### <a id="gcm-token" />GCM Token Registration
-The `FTRRegistrationIntentService` is responsible for registering the app's GCM token to the Futurae server. This is important for the server to be able to issue GCM notifications for your app. The provided service handles this, however if you need to, you can write your own or extend the existing one. In any case, the `FTRRegistrationIntentService` needs to be started in your app in order to handle changes in the GCM token. To start the service, you need to call the `Context.startService()` method; for example, inside your main activity, use the following code:
+For this purpose, you can either use the one included in the SDK (`com.futurae.sdk.messaging.FTRFcmMessagingService`), or write your own. This service overrides two important methods:
 ```java
-startService(new Intent(packageContext, FTRRegistrationIntentService.class));
+    @Override
+    public void onNewToken(String token);
+
+    @Override
+    public void onMessageReceived(RemoteMessage message);
 ```
 
-If you are implementing your own GCM notification handling, you should register the GCM token to the Futurae server every time it changes. The call that registers the GCM token to the Futurae server is `registerPushToken()`, and it is necessary every time the GCM token is generated or is changed by GCM.
+The first one is invoked whenever a new FCM push token has been generated for the app; it is important to register this token with the Futurae backend in order to continue receiving push notifications. The `FTRFcmMessagingService` implements this functionality.
 
-For example, once the app receives a new GCM token (e.g. via an `InstanceIdListenerService`), the token needs to be obtained and registered to the Futurae server using the following code:
+The second one is invoked whenever a new push notification (or cloud message) is received by the app. The `FTRFcmMessagingService` then processes this message and invokes the SDK accordingly.
+
+#### <a id="fcm-token-registration" />FCM Token Registration
+The `FTRFcmMessagingService` is responsible for registering the app's FCM token to the Futurae server. This is important for the server to be able to issue FCM notifications for your app. The provided service handles this, however if you need to, you can write your own or extend the existing one.
+
+If you are implementing **your own FCM notification handling**, you should register the FCM token to the Futurae server every time it changes. The call that registers the FCM token to the Futurae server is `registerPushToken()`, and it is necessary every time the FCM token is generated or is changed by FCM.
+
+For example, once the app receives a new FCM token (e.g. via an `onNewToken()` callback in your own `FirebaseMessagingService` subclass), the token needs to be obtained and registered to the Futurae server using the following code:
 ```java
-FuturaeClient.sharedClient().registerPushToken(gcmToken, new FuturaeCallback() {
+FuturaeClient.sharedClient().registerPushToken(fcmToken, new FuturaeCallback() {
 	@Override
 	public void success() {
 
@@ -225,23 +197,23 @@ FuturaeClient.sharedClient().registerPushToken(gcmToken, new FuturaeCallback() {
 });
 ```
 
-#### <a id="gcm-listener" />GCM Listener Service
-The `FTRGcmListenerService` receives GCM push notifications and handles them, according to the actions dictated by the Futurae server. You can use or extend the service provided by the SDK, or write your own. There are two distinct push notification types issued by the Futurae server: **Aprove** or **Unenroll**.
+#### <a id="fcm-listener-service" />FCM Listener Service
+The `FTRFcmMessagingService` receives FCM push notifications and handles them, according to the actions dictated by the Futurae server. You can use or extend the service provided by the SDK, or write your own. There are two distinct push notification types issued by the Futurae server: **Aprove** or **Unenroll**.
 
-In case you want to process and handle the GCM notifications without using `FTRGcmListenerService`, you must use the following code in order to process and handle the notifications sent by the Futurae server, inside the implementation of your `GcmListenerService`:
+In case you want to process and handle the FCM notifications without using `FTRFcmMessagingService`, you must use the following code in order to process and handle the notifications sent by the Futurae server, inside the implementation of your own `FirebaseMessagingService` subclass:
 ```java
 @Override
-public void onMessageReceived(String from, Bundle data) {
+public void onMessageReceived(RemoteMessage message) {
 
-	// Create and handle a Futurae notification
-	FTRNotification notification = notificationFactory.createNotification(data);
+	// Create and handle a Futurae notification, containing a Bundle with any data from message.getData()
+	FTRNotification notification = notificationFactory.createNotification(service, data);
 	notification.handle();
 }
 ```
 
 #### <a id="local-intents" />Local Intents
-Once a Futurae GCM notification has been handled, the SDK will notify the host app using **local broadcasts**. The app should register a broadcast receiver for these intents and react accordingly. There are three distinct Intents that the notification handlers might send in a local broadcast:
-* `INTENT_GENERIC_NOTIFICATION_ERROR`: Indicates that an error was encountered during the processing or handling of a GCM notification.
+Once a Futurae FCM notification has been handled, the SDK will notify the host app using **local broadcasts**. The app should register a broadcast receiver for these intents and react accordingly. There are three distinct Intents that the notification handlers might send in a local broadcast:
+* `INTENT_GENERIC_NOTIFICATION_ERROR`: Indicates that an error was encountered during the processing or handling of a FCM notification.
 * `INTENT_APPROVE_AUTH_MESSAGE`: Indicates that a Push Notification Authentication has been initiated.
 * `INTENT_ACCOUNT_UNENROLL_MESSAGE`: Indicates that a user account has been logged out remotely.
 
@@ -267,7 +239,7 @@ LocalBroadcastManager.getInstance(getContext()).registerReceiver(new BroadcastRe
 				break;
 
 			case Shared.INTENT_GENERIC_NOTIFICATION_ERROR:
-				// Handle GCM notification error
+				// Handle FCM notification error
 				break;
 		}
 	}
@@ -323,7 +295,7 @@ FuturaeClient.sharedClient().logout(userId, new FuturaeCallback() {
 });
 ```
 
-Typically this should happen either when the user removes the account manually from the app, or when a user has been logged out remotely by the server. In the former case, calling the `logout()` method is enough, as it notifies the server of the logout and deletes the account from the SDK too. In the latter case, the server will send a GCM notification to the app, and the default handler of the notification will delete the account from the SDK as well. In this case, the notification handler will also send a local broadcast to the app (see `INTENT_ACCOUNT_UNENROLL_MESSAGE` [above](#local-intents), so that the app can also perform any further action required (e.g. refresh the list of active accounts in an account view).
+Typically this should happen either when the user removes the account manually from the app, or when a user has been logged out remotely by the server. In the former case, calling the `logout()` method is enough, as it notifies the server of the logout and deletes the account from the SDK too. In the latter case, the server will send a FCM notification to the app, and the default handler of the notification will delete the account from the SDK as well. In this case, the notification handler will also send a local broadcast to the app (see `INTENT_ACCOUNT_UNENROLL_MESSAGE` [above](#local-intents), so that the app can also perform any further action required (e.g. refresh the list of active accounts in an account view).
 
 The intent contains the User ID as an extra:
 ```java

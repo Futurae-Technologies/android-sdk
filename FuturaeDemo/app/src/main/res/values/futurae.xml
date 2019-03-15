@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-  <string name="ftr_api_key">{FuturaeApiKey}</string>
-  <string name="ftr_push_gcm_sender_id">{GcmSenderId}</string>
+  <string name="ftr_sdk_id">{FuturaeSdkId}</string>
+  <string name="ftr_sdk_key">{FuturaeSdkKey}</string>
   <string name="ftr_base_url">https://api.futurae.com:443</string>
 
 </resources>
