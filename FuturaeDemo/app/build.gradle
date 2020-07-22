@@ -1,8 +1,8 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 28
-    buildToolsVersion '28.0.3'
+    compileSdkVersion 29
+    buildToolsVersion '29.0.2'
 
     defaultConfig {
         applicationId "com.futurae.futuraedemo"
@@ -14,16 +14,27 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
-        release {
-            minifyEnabled false
+        debug {
+            minifyEnabled true
+
+            proguardFile 'proguard/futurae.pro'
+            proguardFile getDefaultProguardFile('proguard-android.txt')
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
-        debug {
-        }
-    }
-    productFlavors {
+
     }
 }
+
+repositories {
+    maven {
+        url "https://artifactory.futurae.com/artifactory/futurae-mobile"
+        credentials {
+            username = "anonymous"
+            password = ""
+        }
+    }
+}
+
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
@@ -37,12 +48,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-core:16.0.7'
     implementation 'com.google.firebase:firebase-messaging:17.4.0'
 
-    implementation 'com.squareup.retrofit2:retrofit:2.4.0'
-    implementation 'com.squareup.retrofit2:converter-moshi:2.4.0'
-    implementation 'com.squareup.moshi:moshi-adapters:1.6.0'
-    implementation 'com.squareup.okhttp3:okhttp:3.11.0'
-    implementation 'com.squareup.okhttp3:logging-interceptor:3.11.0'
-    implementation(name:'futuraekit', ext:'aar')
+    implementation('com.futurae.sdk:futuraekit:1.0.0')
 }
 
 apply plugin: 'com.google.gms.google-services'

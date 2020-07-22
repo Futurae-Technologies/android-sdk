@@ -2,6 +2,7 @@ package com.futurae.futuraedemo;
 
 import android.app.Application;
 import com.futurae.sdk.FuturaeClient;
+import com.futurae.sdk.Kit;
 
 public class AppMain extends Application {
 
@@ -11,6 +12,6 @@ public class AppMain extends Application {
 
         super.onCreate();
 
-        FuturaeClient.launch(this, null);
+        FuturaeClient.launch(this, (Kit)null);
     }
 }

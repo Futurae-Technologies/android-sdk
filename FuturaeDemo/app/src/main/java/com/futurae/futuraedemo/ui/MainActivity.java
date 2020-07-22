@@ -21,9 +21,12 @@ import android.util.Log;
 import com.futurae.futuraedemo.R;
 import com.futurae.sdk.FuturaeCallback;
 import com.futurae.sdk.FuturaeClient;
+import com.futurae.sdk.FuturaeResultCallback;
 import com.futurae.sdk.approve.ApproveSession;
 import com.futurae.sdk.model.Account;
+import com.futurae.sdk.model.ApproveInfo;
 import com.futurae.sdk.model.CurrentTotp;
+import com.futurae.sdk.model.SessionInfo;
 import com.futurae.sdk.utils.NotificationUtils;
 import com.google.android.gms.vision.barcode.Barcode;
 
@@ -69,27 +72,46 @@ public class MainActivity extends AppCompatActivity {
         // TODO: Handle URI call
         final String uriCall = getIntent().getDataString();
         if (!TextUtils.isEmpty(uriCall)) {
-            FuturaeClient.sharedClient().handleUri(uriCall, new FuturaeCallback() {
-                @Override
-                public void success() {
-                    Log.i(TAG, "success: URI handled");
 
-                    // TODO: Handle enrollment and MobileAuth
-                    if (uriCall.contains("enroll")) {
-                        // URI Enrollment
+            // Enrollment URI
+            if (uriCall.contains("enroll")) {
+                FuturaeClient.sharedClient().handleUri(uriCall, new FuturaeCallback() {
+                    @Override
+                    public void success() {
+                        Log.i(TAG, "success: URI handled");
                         showAlert("Success", "Successfully enrolled");
-                    } else {
-                        // MobileAuth
-                        finish();
                     }
-                }
 
-                @Override
-                public void failure(Throwable throwable) {
-                    Log.e(TAG, "failure: failed to handle URI: " + throwable);
-                    showAlert("Error", "Could not handle URI call");
-                }
-            });
+                    @Override
+                    public void failure(Throwable throwable) {
+                        Log.e(TAG, "failure: failed to handle URI: " + throwable);
+                        showAlert("Error", "Could not handle URI call");
+                    }
+                });
+                return;
+            }
+
+            // Auth URI
+            if (uriCall.contains("auth")) {
+                String userId = FuturaeClient.getUserIdFromUri(uriCall);
+                String sessionToken = FuturaeClient.getSessionTokenFromUri(uriCall);
+                FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionToken,
+                        new FuturaeResultCallback<SessionInfo>() {
+                            @Override
+                            public void success(SessionInfo sessionInfo) {
+                                showApproveAlertDialog(new ApproveSession(sessionInfo), true);
+                            }
+
+                            @Override
+                            public void failure(Throwable t) {
+                                Log.e(TAG, "QR Code authentication failed: " + t.getLocalizedMessage());
+                            }
+                        });
+                return;
+            }
+
+            Log.e(TAG, "failure: failed to handle URI: " + uriCall);
+            showAlert("Error", "Could not handle URI call");
         }
     }
 
@@ -145,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
         final Account account = accounts.get(0);
         CurrentTotp totp = FuturaeClient.sharedClient().nextTotp(account.getUserId());
 
-        showAlert("TOTP", "Code: " + totp.passcode + "\nRemaining seconds: " + totp.remainingSecs);
+        showAlert("TOTP", "Code: " + totp.getPasscode() + "\nRemaining seconds: " + totp.getRemainingSecs());
     }
 
     // QRCode callbacks
@@ -155,48 +177,55 @@ public class MainActivity extends AppCompatActivity {
         Barcode qrcode = data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE);
         Log.i(TAG, "Scanned activation code from the QR code; will enroll device");
         FuturaeClient.sharedClient().enroll(qrcode.rawValue,
-            new FuturaeCallback() {
-                @Override
-                public void success() {
-                    Log.i(TAG, "Enrollment successful");
-                    showAlert("Success", "Enrollment successful");
-                }
+                new FuturaeCallback() {
+                    @Override
+                    public void success() {
+                        Log.i(TAG, "Enrollment successful");
+                        showAlert("Success", "Enrollment successful");
+                    }
 
-                @Override
-                public void failure(Throwable throwable) {
-                    Log.e(TAG, "Enrollment failed: " + throwable.getLocalizedMessage());
-                    showAlert("Error", "Enrollment failed");
-                }
-            });
+                    @Override
+                    public void failure(Throwable throwable) {
+                        Log.e(TAG, "Enrollment failed: " + throwable.getLocalizedMessage());
+                        showAlert("Error", "Enrollment failed");
+                    }
+                });
     }
 
     private void onAuthQRCodeScanned(Intent data) {
-        // TODO: Handle QRCode auth response
-
         Barcode qrcode = data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE);
-        Log.i(TAG, "Scanned authentication data from the QR code; will reply to server");
-        FuturaeClient.sharedClient().approveAuth(qrcode.rawValue,
-            new FuturaeCallback() {
-                @Override
-                public void success() {
-                    Log.i(TAG, "QR Code authentication succeeded");
-                }
+        String userId = FuturaeClient.getUserIdFromQrcode(qrcode.rawValue);
+        String sessionToken = FuturaeClient.getSessionTokenFromQrcode(qrcode.rawValue);
 
-                @Override
-                public void failure(Throwable throwable) {
-                    Log.e(TAG, "QR Code authentication failed: "
-                        + throwable.getLocalizedMessage());
-                }
-            });
+        FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionToken,
+                new FuturaeResultCallback<SessionInfo>() {
+                    @Override
+                    public void success(SessionInfo sessionInfo) {
+                        showApproveAlertDialog(new ApproveSession(sessionInfo), false);
+                    }
+
+                    @Override
+                    public void failure(Throwable t) {
+                        Log.e(TAG, "QR Code authentication failed: " + t.getLocalizedMessage());
+                    }
+                });
     }
 
     // Approve dialog
-    void showApproveAlertDialog(final ApproveSession session) {
+    void showApproveAlertDialog(final ApproveSession session, final boolean isFromUri) {
         // TODO: For demo purposes we simply show an alert instead of an approve screen
+
+        StringBuffer sb = new StringBuffer();
+        if (session.getInfo() != null) {
+            sb.append("\n");
+            for (ApproveInfo info : session.getInfo()) {
+                sb.append(info.getKey()).append(": ").append(info.getValue()).append("\n");
+            }
+        }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Approve");
-        builder.setMessage("Would you like to approve the request?");
+        builder.setMessage("Would you like to approve the request?" + sb.toString());
         builder.setPositiveButton("Approve", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
                 FuturaeClient.sharedClient().approveAuth(session.getUserId(),
@@ -204,13 +233,16 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void success() {
                                 Log.i(TAG, "Approve session allowed");
+                                if (isFromUri) {
+                                    finish();
+                                }
                             }
 
                             @Override
                             public void failure(Throwable t) {
                                 Log.e(TAG, "Failed to approve session: " + t.getLocalizedMessage());
                             }
-                        });
+                        }, session.getInfo());
             }
         });
         builder.setNegativeButton("Deny", new DialogInterface.OnClickListener() {
@@ -220,13 +252,16 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void success() {
                                 Log.i(TAG, "Approve session rejected");
+                                if (isFromUri) {
+                                    finish();
+                                }
                             }
 
                             @Override
                             public void failure(Throwable t) {
                                 Log.e(TAG, "Failed to approve session: " + t.getLocalizedMessage());
                             }
-                        });
+                        }, session.getInfo());
             }
         });
 
@@ -303,17 +338,21 @@ public class MainActivity extends AppCompatActivity {
                         final ApproveSession session = intent.getParcelableExtra(
                                 NotificationUtils.PARAM_APPROVE_SESSION);
 
+                        if (approveDialog != null && approveDialog.isShowing()) {
+                            approveDialog.dismiss();
+                        }
+
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                showApproveAlertDialog(session);
+                                showApproveAlertDialog(session, false);
                             }
                         });
                         break;
 
                     case NotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE:
                         if (approveDialog != null && approveDialog.isShowing()) {
-                          approveDialog.dismiss();
+                            approveDialog.dismiss();
                         }
                         break;
 

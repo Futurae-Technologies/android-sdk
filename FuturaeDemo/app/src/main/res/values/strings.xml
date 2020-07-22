@@ -13,6 +13,6 @@
 
   <!--ERRORS-->
   <string name="error_low_storage">QR code scanning cannot be performed due to low device storage</string>
-    <string name="main_btn_logout">Logout</string>
+  <string name="main_btn_logout">Logout</string>
 
 </resources>

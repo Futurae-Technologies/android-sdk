@@ -5,11 +5,12 @@ This is the Android SDK of Futurae. You can read more about Futurae™ at [futur
 ## Table of contents
 
 * [Basic integration](#basic-integration)
-   * [Get FuturaeKit SDK for Android](#get-futuraekit-sdk-for-android)
-   * [Add SDK to Project](#add-sdk-to-project)
+   * [Get FuturaeKit SDK for Android via Maven](#get-futuraekit-sdk-for-android-via-maven)
+   * [Get FuturaeKit SDK for Android Manually](#get-futuraekit-sdk-for-android-manually)
    * [Add permissions](#add-permissions)
    * [Basic setup](#basic-setup)
    * [Build your app](#build-your-app)
+   * [R8 / Proguard](#r8-proguard)
 * [Features](#features)
    * [Callbacks](#callbacks)
    * [URI Schemes](#uri-schemes)
@@ -32,21 +33,43 @@ This is the Android SDK of Futurae. You can read more about Futurae™ at [futur
 ## <a id="basic-integration" />Basic integration
 We will describe the steps to integrate the FuturaeKit SDK into your Android project. We are going to assume that you are using Android Studio for your development.
 
-### <a id="get-futuraekit-sdk-for-android" />Get FuturaeKit SDK for Android
-You can download the latest SDK from the [releases](https://git.futurae.com/futurae-public/futurae-android-sdk/tags), or clone this repository directly.
+### <a id="get-futuraekit-sdk-for-android-via-maven" />Get FuturaeKit SDK for Android via Maven
+The *preferred* way to get the FuturaeKit SDK fro Android is through maven and the Futurae private repository.
+
+To do so add the following lines to your `build.gradle` file:
+
+```
+repositories {
+  maven {
+    url "https://artifactory.futurae.com/artifactory/futurae-mobile"
+    credentials {
+      username = "anonymous"
+      password = ""
+    }
+  }
+}
+
+dependencies {
+  implementation('com.futurae.sdk:futuraekit:1.0.0')
+}
+```
+
+Of course, make sure to specify the correct version number.
+
+### <a id="get-futuraekit-sdk-for-android-via-maven" />Get FuturaeKit SDK for Android Manually
+Alternatively, *although discouraged*, you can download the latest SDK from the [releases](https://git.futurae.com/futurae-public/futurae-android-sdk/tags), or clone this repository directly.
 This repository also contains a simple demo app to show how the SDK can be integrated.
 
-
-### <a id="add-sdk-to-project" />Add SDK to Project
 To integrate the FuturaeKit SDK into your project, copy `futuraekit.aar` into the `src/main/libs` folder of your app.
 Then, in your modules `build.gradle` (the one under "app"), add the following dependencies:
 ```
-compile 'com.squareup.retrofit2:retrofit:2.3.0'
-compile 'com.squareup.retrofit2:converter-moshi:2.3.0'
-compile 'com.squareup.moshi:moshi-adapters:1.4.0'
+implementation 'com.squareup.retrofit2:retrofit:2.3.0'
+implementation 'com.squareup.retrofit2:converter-moshi:2.3.0'
+implementation 'com.squareup.moshi:moshi-adapters:1.4.0'
 implementation 'com.squareup.okhttp3:okhttp:3.8.0'
-compile 'com.squareup.okhttp3:logging-interceptor:3.8.0'
-compile(name:'futuraekit', ext:'aar')
+implementation 'com.squareup.okhttp3:logging-interceptor:3.8.0'
+implementation 'com.github.nisrulz:easydeviceinfo-base:2.4.1'
+implementation files('src/main/libs/futuraekit.aar')
 ```
 
 ![][gradle-app]
@@ -124,6 +147,12 @@ Secondly, in your `res/values` folder make sure to create a file `futurae.xml` w
 
 Build and run your app. If the build succeeds, you should carefully read the SDK logs in the console.
 
+
+### <a id="r8-proguard" />R8 / ProGuard
+
+If you are using R8 or ProGuard add the options from [build.gradle][build_gradle].
+
+
 ## <a id="features" />Features
 ### <a id="callbacks" />Callbacks
 The SDK methods that perform API calls use callbacks as the feedback mechanism. These calls expect an object of the `FuturaeCallback` interface as an argument:
@@ -151,6 +180,8 @@ FuturaeClient.sharedClient().handleUri(uriString, new FuturaeCallback() {
 	}
 });
 ```
+
+**Note**: In case you attempt an authentication with a URI scheme call, and this authentication includes extra information to be displayed to the user, you must retrieve this information from the server and include it in the authentication response; see section [Session Information](#session-information) for details on how to do that.
 
 ### <a id="push-notifications" />Push Notifications
 Your app must be set up to receive Firebase Cloud Messaging (FCM) push notifications from our server. You can choose to receive and handle these notifications yourself, or alternatively you can use the existing infrastructure provided in the SDK. You can find more information on how to setup FCM push notifications for your app in the [Firebase Cloud Messaging Developer Guide](https://firebase.google.com/docs/cloud-messaging/).
@@ -348,6 +379,8 @@ FuturaeClient.sharedClient().approveAuth(qrCodeString, new FuturaeCallback() {
 });
 ```
 
+**Note**: In case you attempt an authentication with a QR Code, and this authentication includes extra information to be displayed to the user, you must retrieve this information from the server and include it in the authentication response; see section [Session Information](#session-information) for details on how to do that.
+
 #### <a id="approve-auth" />Push Notification Factor
 When a Push Notification Factor session is initiated on the server side, the server will send a push notification to the app, where the user should approve or reject the authentication session. The notification is received and handled by the SDK, which in turn will send a local broadcast (see `INTENT_APPROVE_AUTH_MESSAGE` [above](#local-intents)), so that the app can perform any required actions. For example, the app might want to display a prompt to the user so that they can approve or reject the session.
 
@@ -359,6 +392,8 @@ String sessionId = authSession.getSessionId();
 ```
 
 Once the outcome of the authentication has been decided by the app, it should be sent to the server for the authentication session to complete.
+
+**Note**: In case you attempt an authentication via push notification, and this authentication includes extra information to be displayed to the user, you must retrieve this information from the server and include it in the authentication response; see section [Session Information](#session-information) for details on how to do that.
 
 ##### <a id="approve-reply" />Approve Authentication
 To approve the authentication session, use the following method:
@@ -397,8 +432,8 @@ FuturaeClient.sharedClient().rejectAuth(userId, sessionId, reportFraud, new Futu
 The TOTP Factor can be used for offline authentication, as there is no requirement for an internet connection in the app. To get the current TOTP generated by the SDK for a specific user account, call the following method:
 ```java
 CurrentTotp totp = FuturaeClient.sharedClient().nextTotp(userId);
-String passcode = totp.passcode;            // The TOTP that the user should use to authenticate
-int remainingSeconds = totp.remainingSecs;  // The remaining seconds of validity of this TOTP
+String passcode = totp.getPasscode();            // The TOTP that the user should use to authenticate
+int remainingSeconds = totp.getRemainingSecs();  // The remaining seconds of validity of this TOTP
 ```
 As seen in this example, the `nextTotp()` method returns an object that contains the TOTP itself, but also the remaining seconds that this TOTP will be still valid for. After this time, a new TOTP must be obtained by the SDK.
 
@@ -436,6 +471,39 @@ FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionId, new FuturaeRe
 
 If there is extra information to be displayed to the user, for example when confirming a transaction, this will be indicated with a list of key-value pairs in the `extra_info` part of the response.
 
+In order to query the server for the session information, you need the user ID and the session ID or token. You can use the following helper methods to obtain these from either a URI or a QR Code:
+```java
+public class FuturaeClient {
+    public static String getUserIdFromQrcode(String qrCode);
+    public static String getSessionTokenFromQrcode(String qrCode);
+    public static String getUserIdFromUri(String uri);
+    public static String getSessionTokenFromUri(String uri);
+}
+```
+
+##### <a id="auth-extra-info" />Authentication with extra information
+In case it exists, you can retrieve the extra information that the user needs to review while authenticating by calling the following method on the `SessionInfo` object:
+
+```java
+public ApproveInfo[] getApproveInfo();
+```
+
+Each `ApproveInfo` object is a key-value pair that describes a single piece of information; call the following methods to retrieve the key and value of the object respectively.
+
+```java
+public String getKey();
+public String getValue();
+```
+
+**IMPORTANT**: In case the authentication contains such extra information, it is mandatory that the information is fetched from the server, displayed to the user, and included in the authentication response in order for it to be included in the response signature; otherwise the server will reject the authentication response. Use the following methods to send an authentication response including the authentication information:
+
+```java
+class FuturaeClient {
+    public void approveAuth(String qrCode, final FuturaeCallback callback, ApproveInfo[] extraInfo);
+    public void approveAuth(String userId, String sessionId, final FuturaeCallback callback, ApproveInfo[] extraInfo);
+    public void rejectAuth(String userId, String sessionId, boolean reportFraud, final FuturaeCallback callback, ApproveInfo[] extraInfo);
+}
+```
 
 [futurae.com]:  http://www.futurae.com
 
@@ -444,3 +512,4 @@ If there is extra information to be displayed to the user, for example when conf
 [config-xml]:  ./Resources/config-xml.png
 
 [android_application]:            http://developer.android.com/reference/android/app/Application.html
+[build_gradle]:            ./app/build.gradle

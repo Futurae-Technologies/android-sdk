@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.futurae.futuraedemo">
+    package="com.futurae.futuraedemo">
 
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
   <uses-permission android:name="android.permission.CAMERA" />
   <uses-feature android:name="android.hardware.camera" />
@@ -11,13 +12,13 @@
   <uses-permission android:name="android.permission.WAKE_LOCK" />
 
   <application
-    android:allowBackup="true"
-    android:icon="@mipmap/ic_launcher"
-    android:label="@string/app_name"
-    android:name="com.futurae.futuraedemo.AppMain"
-    android:roundIcon="@mipmap/ic_launcher_round"
-    android:supportsRtl="true"
-    android:theme="@style/AppTheme">
+      android:allowBackup="true"
+      android:icon="@mipmap/ic_launcher"
+      android:label="@string/app_name"
+      android:name="com.futurae.futuraedemo.AppMain"
+      android:roundIcon="@mipmap/ic_launcher_round"
+      android:supportsRtl="true"
+      android:theme="@style/AppTheme">
 
     <meta-data
         android:name="com.google.android.gms.vision.DEPENDENCIES"
@@ -47,9 +48,9 @@
     </activity>
 
     <activity
-      android:exported="false"
-      android:name=".ui.FTRQRCodeActivity"
-      android:theme="@style/AppTheme" />
+        android:exported="false"
+        android:name=".ui.FTRQRCodeActivity"
+        android:theme="@style/AppTheme" />
   </application>
 
 </manifest>
