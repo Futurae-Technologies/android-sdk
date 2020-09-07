@@ -150,7 +150,7 @@ Build and run your app. If the build succeeds, you should carefully read the SDK
 
 ### <a id="r8-proguard" />R8 / ProGuard
 
-If you are using R8 or ProGuard add the options from [build.gradle][build_gradle].
+If you are using R8 or ProGuard to obfuscate your app, you need to include the proguard rules of the [futurae.pro](https://git.futurae.com/futurae-public/futurae-android-sdk/-/blob/master/FuturaeDemo/app/proguard/futurae.pro) file. See the [build.gradle](https://git.futurae.com/futurae-public/futurae-android-sdk/-/blob/master/FuturaeDemo/app/build.gradle) file of the FuturaeDemo app, as an example on how to do this.
 
 
 ## <a id="features" />Features
