@@ -96,17 +96,17 @@ public class MainActivity extends AppCompatActivity {
                 String userId = FuturaeClient.getUserIdFromUri(uriCall);
                 String sessionToken = FuturaeClient.getSessionTokenFromUri(uriCall);
                 FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionToken,
-                        new FuturaeResultCallback<SessionInfo>() {
-                            @Override
-                            public void success(SessionInfo sessionInfo) {
-                                showApproveAlertDialog(new ApproveSession(sessionInfo), true);
-                            }
+                    new FuturaeResultCallback<SessionInfo>() {
+                        @Override
+                        public void success(SessionInfo sessionInfo) {
+                            showApproveAlertDialog(new ApproveSession(sessionInfo), true);
+                        }
 
-                            @Override
-                            public void failure(Throwable t) {
-                                Log.e(TAG, "QR Code authentication failed: " + t.getLocalizedMessage());
-                            }
-                        });
+                        @Override
+                        public void failure(Throwable t) {
+                            Log.e(TAG, "QR Code authentication failed: " + t.getLocalizedMessage());
+                        }
+                    });
                 return;
             }
 
@@ -177,19 +177,19 @@ public class MainActivity extends AppCompatActivity {
         Barcode qrcode = data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE);
         Log.i(TAG, "Scanned activation code from the QR code; will enroll device");
         FuturaeClient.sharedClient().enroll(qrcode.rawValue,
-                new FuturaeCallback() {
-                    @Override
-                    public void success() {
-                        Log.i(TAG, "Enrollment successful");
-                        showAlert("Success", "Enrollment successful");
-                    }
+            new FuturaeCallback() {
+                @Override
+                public void success() {
+                    Log.i(TAG, "Enrollment successful");
+                    showAlert("Success", "Enrollment successful");
+                }
 
-                    @Override
-                    public void failure(Throwable throwable) {
-                        Log.e(TAG, "Enrollment failed: " + throwable.getLocalizedMessage());
-                        showAlert("Error", "Enrollment failed");
-                    }
-                });
+                @Override
+                public void failure(Throwable throwable) {
+                    Log.e(TAG, "Enrollment failed: " + throwable.getLocalizedMessage());
+                    showAlert("Error", "Enrollment failed");
+                }
+            });
     }
 
     private void onAuthQRCodeScanned(Intent data) {
@@ -198,17 +198,17 @@ public class MainActivity extends AppCompatActivity {
         String sessionToken = FuturaeClient.getSessionTokenFromQrcode(qrcode.rawValue);
 
         FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionToken,
-                new FuturaeResultCallback<SessionInfo>() {
-                    @Override
-                    public void success(SessionInfo sessionInfo) {
-                        showApproveAlertDialog(new ApproveSession(sessionInfo), false);
-                    }
+            new FuturaeResultCallback<SessionInfo>() {
+                @Override
+                public void success(SessionInfo sessionInfo) {
+                    showApproveAlertDialog(new ApproveSession(sessionInfo), false);
+                }
 
-                    @Override
-                    public void failure(Throwable t) {
-                        Log.e(TAG, "QR Code authentication failed: " + t.getLocalizedMessage());
-                    }
-                });
+                @Override
+                public void failure(Throwable t) {
+                    Log.e(TAG, "QR Code authentication failed: " + t.getLocalizedMessage());
+                }
+            });
     }
 
     // Approve dialog
@@ -329,7 +329,8 @@ public class MainActivity extends AppCompatActivity {
                         Log.d(TAG, NotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE);
 
                         String userId = intent.getStringExtra(NotificationUtils.PARAM_USER_ID);
-                        Log.i(TAG, "Received logout and deleted account: " + userId);
+                        String deviceId = intent.getStringExtra(NotificationUtils.PARAM_DEVICE_ID);
+                        Log.i(TAG, "Received logout and deleted account: " + userId + " for device ID: " + deviceId);
                         break;
 
                     case NotificationUtils.INTENT_APPROVE_AUTH_MESSAGE:
@@ -352,7 +353,7 @@ public class MainActivity extends AppCompatActivity {
 
                     case NotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE:
                         if (approveDialog != null && approveDialog.isShowing()) {
-                            approveDialog.dismiss();
+                          approveDialog.dismiss();
                         }
                         break;
 

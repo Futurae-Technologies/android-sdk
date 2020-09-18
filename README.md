@@ -50,7 +50,7 @@ repositories {
 }
 
 dependencies {
-  implementation('com.futurae.sdk:futuraekit:1.0.0')
+  implementation('com.futurae.sdk:futuraekit:1.1.0')
 }
 ```
 
@@ -63,11 +63,11 @@ This repository also contains a simple demo app to show how the SDK can be integ
 To integrate the FuturaeKit SDK into your project, copy `futuraekit.aar` into the `src/main/libs` folder of your app.
 Then, in your modules `build.gradle` (the one under "app"), add the following dependencies:
 ```
-implementation 'com.squareup.retrofit2:retrofit:2.3.0'
-implementation 'com.squareup.retrofit2:converter-moshi:2.3.0'
-implementation 'com.squareup.moshi:moshi-adapters:1.4.0'
-implementation 'com.squareup.okhttp3:okhttp:3.8.0'
-implementation 'com.squareup.okhttp3:logging-interceptor:3.8.0'
+implementation 'com.squareup.retrofit2:retrofit:2.4.0'
+implementation 'com.squareup.retrofit2:converter-moshi:2.4.0'
+implementation 'com.squareup.moshi:moshi-adapters:1.6.0'
+implementation 'com.squareup.okhttp3:okhttp:3.11.0'
+implementation 'com.squareup.okhttp3:logging-interceptor:3.11.0'
 implementation 'com.github.nisrulz:easydeviceinfo-base:2.4.1'
 implementation files('src/main/libs/futuraekit.aar')
 ```
@@ -328,9 +328,10 @@ FuturaeClient.sharedClient().logout(userId, new FuturaeCallback() {
 
 Typically this should happen either when the user removes the account manually from the app, or when a user has been logged out remotely by the server. In the former case, calling the `logout()` method is enough, as it notifies the server of the logout and deletes the account from the SDK too. In the latter case, the server will send a FCM notification to the app, and the default handler of the notification will delete the account from the SDK as well. In this case, the notification handler will also send a local broadcast to the app (see `INTENT_ACCOUNT_UNENROLL_MESSAGE` [above](#local-intents), so that the app can also perform any further action required (e.g. refresh the list of active accounts in an account view).
 
-The intent contains the User ID as an extra:
+The intent contains the User ID, as well as the Device ID, as an extra:
 ```java
-String userId = intent.getStringExtra(FTRUnenrollNotification.PARAM_USER_ID);
+String userId = intent.getStringExtra(NotificationUtils.PARAM_USER_ID);
+String deviceId = intent.getStringExtra(NotificationUtils.PARAM_DEVICE_ID);
 ```
 
 ### <a id="account-status" />Account Status
