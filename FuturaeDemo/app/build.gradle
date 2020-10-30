@@ -15,7 +15,7 @@ android {
     }
     buildTypes {
         debug {
-            minifyEnabled true
+            minifyEnabled false
 
             proguardFile 'proguard/futurae.pro'
             proguardFile getDefaultProguardFile('proguard-android.txt')
@@ -48,7 +48,17 @@ dependencies {
     implementation 'com.google.firebase:firebase-core:16.0.7'
     implementation 'com.google.firebase:firebase-messaging:17.4.0'
 
-    implementation('com.futurae.sdk:futuraekit:1.1.0')
+    implementation('com.futurae.sdk:futuraekit:1.1.1')
+
+//  Use these if you are NOT using Maven
+//    implementation 'com.squareup.retrofit2:retrofit:2.4.0'
+//    implementation 'com.squareup.retrofit2:converter-moshi:2.4.0'
+//    implementation 'com.squareup.moshi:moshi-adapters:1.6.0'
+//    implementation 'com.squareup.okhttp3:okhttp:3.11.0'
+//    implementation 'com.squareup.okhttp3:logging-interceptor:3.11.0'
+//    implementation 'com.github.nisrulz:easydeviceinfo-base:2.4.1'
+//    implementation files('src/main/libs/futuraekit.aar')
+
 }
 
 apply plugin: 'com.google.gms.google-services'
