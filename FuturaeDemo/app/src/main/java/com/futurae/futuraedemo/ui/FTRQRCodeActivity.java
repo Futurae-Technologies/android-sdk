@@ -50,6 +50,8 @@ public class FTRQRCodeActivity extends AppCompatActivity implements QRCapturable
 
     public static final int RESULT_BARCODE = 10000;
     public static final int RESULT_BARCODE_AUTH = 20000;
+    public static final int RESULT_BARCODE_OFFLINE = 30000;
+    public static final int RESULT_BARCODE_GENERIC = 40000;
 
     public static final String PARAM_BARCODE = "ftr_barcode";
     public static final String PARAM_AUTOFOCUS = "ftr_autofocus";

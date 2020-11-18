@@ -22,6 +22,7 @@ import com.futurae.futuraedemo.R;
 import com.futurae.sdk.FuturaeCallback;
 import com.futurae.sdk.FuturaeClient;
 import com.futurae.sdk.FuturaeResultCallback;
+import com.futurae.sdk.MalformedQRCodeException;
 import com.futurae.sdk.approve.ApproveSession;
 import com.futurae.sdk.model.Account;
 import com.futurae.sdk.model.ApproveInfo;
@@ -54,6 +55,12 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case FTRQRCodeActivity.RESULT_BARCODE_AUTH:
                     onAuthQRCodeScanned(data);
+                    break;
+                case FTRQRCodeActivity.RESULT_BARCODE_OFFLINE:
+                    onOfflineAuthQRCodeScanned(data);
+                    break;
+                case FTRQRCodeActivity.RESULT_BARCODE_GENERIC:
+                    onQRCodeScanned(data);
                     break;
             }
         }
@@ -96,17 +103,17 @@ public class MainActivity extends AppCompatActivity {
                 String userId = FuturaeClient.getUserIdFromUri(uriCall);
                 String sessionToken = FuturaeClient.getSessionTokenFromUri(uriCall);
                 FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionToken,
-                    new FuturaeResultCallback<SessionInfo>() {
-                        @Override
-                        public void success(SessionInfo sessionInfo) {
-                            showApproveAlertDialog(new ApproveSession(sessionInfo), true);
-                        }
+                        new FuturaeResultCallback<SessionInfo>() {
+                            @Override
+                            public void success(SessionInfo sessionInfo) {
+                                showApproveAlertDialog(new ApproveSession(sessionInfo), true);
+                            }
 
-                        @Override
-                        public void failure(Throwable t) {
-                            Log.e(TAG, "QR Code authentication failed: " + t.getLocalizedMessage());
-                        }
-                    });
+                            @Override
+                            public void failure(Throwable t) {
+                                Log.e(TAG, "QR Code authentication failed: " + t.getLocalizedMessage());
+                            }
+                        });
                 return;
             }
 
@@ -149,13 +156,6 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
-    @OnClick(R.id.main_btn_qr_code_auth)
-    protected void onQRCodeAuth() {
-        Log.i(TAG, "QR Code factor authentication started");
-        startActivityForResult(FTRQRCodeActivity.getIntent(this, true, false),
-                FTRQRCodeActivity.RESULT_BARCODE_AUTH);
-    }
-
     @OnClick(R.id.main_btn_totp)
     protected void onTOTPAuth() {
         List<Account> accounts = FuturaeClient.sharedClient().getAccounts();
@@ -170,6 +170,26 @@ public class MainActivity extends AppCompatActivity {
         showAlert("TOTP", "Code: " + totp.getPasscode() + "\nRemaining seconds: " + totp.getRemainingSecs());
     }
 
+    @OnClick(R.id.main_btn_qr_code_auth)
+    protected void onQRCodeAuth() {
+        Log.i(TAG, "QR Code factor authentication started");
+        startActivityForResult(FTRQRCodeActivity.getIntent(this, true, false),
+                FTRQRCodeActivity.RESULT_BARCODE_AUTH);
+    }
+
+    @OnClick(R.id.main_btn_qr_code_offline_auth)
+    protected void onOfflineQRCodeAuth() {
+        Log.i(TAG, "Offline QR Code factor authentication started");
+        startActivityForResult(FTRQRCodeActivity.getIntent(this, true, false),
+                FTRQRCodeActivity.RESULT_BARCODE_OFFLINE);
+    }
+
+    @OnClick(R.id.main_btn_qr_code_generic)
+    protected void onQRCodeGeneric() {
+        Log.i(TAG, "Generic QR Code started");
+        startActivityForResult(FTRQRCodeActivity.getIntent(this, true, false), FTRQRCodeActivity.RESULT_BARCODE_GENERIC);
+    }
+
     // QRCode callbacks
     private void onEnrollQRCodeScanned(Intent data) {
         // TODO: Handle enrollment response
@@ -177,38 +197,67 @@ public class MainActivity extends AppCompatActivity {
         Barcode qrcode = data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE);
         Log.i(TAG, "Scanned activation code from the QR code; will enroll device");
         FuturaeClient.sharedClient().enroll(qrcode.rawValue,
-            new FuturaeCallback() {
-                @Override
-                public void success() {
-                    Log.i(TAG, "Enrollment successful");
-                    showAlert("Success", "Enrollment successful");
-                }
+                new FuturaeCallback() {
+                    @Override
+                    public void success() {
+                        Log.i(TAG, "Enrollment successful");
+                        showAlert("Success", "Enrollment successful");
+                    }
 
-                @Override
-                public void failure(Throwable throwable) {
-                    Log.e(TAG, "Enrollment failed: " + throwable.getLocalizedMessage());
-                    showAlert("Error", "Enrollment failed");
-                }
-            });
+                    @Override
+                    public void failure(Throwable throwable) {
+                        Log.e(TAG, "Enrollment failed: " + throwable.getLocalizedMessage());
+                        showAlert("Error", "Enrollment failed");
+                    }
+                });
     }
 
     private void onAuthQRCodeScanned(Intent data) {
         Barcode qrcode = data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE);
-        String userId = FuturaeClient.getUserIdFromQrcode(qrcode.rawValue);
-        String sessionToken = FuturaeClient.getSessionTokenFromQrcode(qrcode.rawValue);
+        Log.i(TAG, "Scanned online QR Code");
+        String userId = null;
+        String sessionToken = null;
+        try {
+            userId = FuturaeClient.getUserIdFromQrcode(qrcode.rawValue);
+            sessionToken = FuturaeClient.getSessionTokenFromQrcode(qrcode.rawValue);
+        } catch (MalformedQRCodeException e) {
+            e.printStackTrace();
+            return;
+        }
 
         FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionToken,
-            new FuturaeResultCallback<SessionInfo>() {
-                @Override
-                public void success(SessionInfo sessionInfo) {
-                    showApproveAlertDialog(new ApproveSession(sessionInfo), false);
-                }
+                new FuturaeResultCallback<SessionInfo>() {
+                    @Override
+                    public void success(SessionInfo sessionInfo) {
+                        showApproveAlertDialog(new ApproveSession(sessionInfo), false);
+                    }
 
-                @Override
-                public void failure(Throwable t) {
-                    Log.e(TAG, "QR Code authentication failed: " + t.getLocalizedMessage());
-                }
-            });
+                    @Override
+                    public void failure(Throwable t) {
+                        Log.e(TAG, "QR Code authentication failed: " + t.getLocalizedMessage());
+                    }
+                });
+    }
+
+    private void onOfflineAuthQRCodeScanned(Intent data) {
+        Barcode qrcode = data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE);
+        showOfflineQrcodeDialog(qrcode.rawValue);
+    }
+
+    private void onQRCodeScanned(Intent data) {
+        Barcode qrcode = data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE);
+        Log.i(TAG, "Scanned QR code checking which type it is");
+        switch (FuturaeClient.getQrcodeType(qrcode.rawValue)) {
+            case FuturaeClient.QR_ENROLL:
+                this.onEnrollQRCodeScanned(data);
+                break;
+            case FuturaeClient.QR_ONLINE:
+                this.onAuthQRCodeScanned(data);
+                break;
+            case FuturaeClient.QR_OFFLINE:
+                this.onOfflineAuthQRCodeScanned(data);
+                break;
+        }
     }
 
     // Approve dialog
@@ -262,6 +311,69 @@ public class MainActivity extends AppCompatActivity {
                                 Log.e(TAG, "Failed to approve session: " + t.getLocalizedMessage());
                             }
                         }, session.getInfo());
+            }
+        });
+
+        approveDialog = builder.create();
+        approveDialog.show();
+    }
+
+    void showOfflineQrcodeSignatureDialog(final String signature) {
+        // TODO: For demo pusposed, we simply show the signature of the OfflineQRCode
+
+        StringBuffer sb = new StringBuffer();
+        sb.append("To Approve the transaction, enter: " + signature + " in the browser");
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Confirm Transaction");
+        builder.setMessage(sb.toString());
+        builder.setPositiveButton("Done", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // nothing
+            }
+        });
+
+        approveDialog = builder.create();
+        approveDialog.show();
+    }
+
+    void showOfflineQrcodeDialog(final String qrCode) {
+        // TODO: For demo purposes we simply show an alert
+
+        ApproveInfo[] extras = new ApproveInfo[0];
+        try {
+            extras = FuturaeClient.getExtraInfoFromOfflineQrcode(qrCode);
+        } catch (MalformedQRCodeException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        StringBuffer sb = new StringBuffer();
+        if (extras != null) {
+            sb.append("\n");
+            for (ApproveInfo info : extras) {
+                sb.append(info.getKey()).append(": ").append(info.getValue()).append("\n");
+            }
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Approve");
+        builder.setMessage("Request Information" + sb.toString());
+        builder.setPositiveButton("Approve", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                String verificationSignature = "";
+                try {
+                    verificationSignature = FuturaeClient.sharedClient().computeVerificationCodeFromQrcode(qrCode);
+                } catch (MalformedQRCodeException e) {
+                    e.printStackTrace();
+                }
+                showOfflineQrcodeSignatureDialog(verificationSignature);
+            }
+        });
+
+        builder.setNegativeButton("Deny", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // nothing to do
             }
         });
 
@@ -353,7 +465,7 @@ public class MainActivity extends AppCompatActivity {
 
                     case NotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE:
                         if (approveDialog != null && approveDialog.isShowing()) {
-                          approveDialog.dismiss();
+                            approveDialog.dismiss();
                         }
                         break;
 

@@ -4,8 +4,10 @@
   <!--MAIN-->
   <string name="main_btn_enroll">Enroll</string>
   <string name="main_btn_qr_code">Scan to Enroll</string>
-  <string name="main_btn_qr_code_auth">QR Code Auth</string>
   <string name="main_btn_totp">TOTP Auth</string>
+  <string name="main_btn_qr_code_auth">Online QR Code Auth</string>
+  <string name="main_btn_qr_code_offline_auth">Offline QR Code Auth</string>
+  <string name="main_btn_qr_code_generic">Scan QR Code</string>
 
   <!--QR CODE-->
   <string name="qrcode_title">QR Code</string>

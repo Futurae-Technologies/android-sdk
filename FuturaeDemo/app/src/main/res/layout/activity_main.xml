@@ -25,6 +25,14 @@
         android:text="@string/main_btn_logout" />
 
     <Button
+        android:id="@+id/main_btn_totp"
+        style="@style/AppTheme.Borderless"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/main_btn_totp" />
+
+    <Button
         android:id="@+id/main_btn_qr_code_auth"
         style="@style/AppTheme.Borderless"
         android:layout_width="wrap_content"
@@ -34,11 +42,19 @@
         />
 
     <Button
-        android:id="@+id/main_btn_totp"
+        android:id="@+id/main_btn_qr_code_offline_auth"
         style="@style/AppTheme.Borderless"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="@string/main_btn_totp" />
+        android:text="@string/main_btn_qr_code_offline_auth" />
+
+    <Button
+        android:id="@+id/main_btn_qr_code_generic"
+        style="@style/AppTheme.Borderless"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/main_btn_qr_code_generic" />
 
 </LinearLayout>
