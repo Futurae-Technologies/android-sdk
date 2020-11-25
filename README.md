@@ -238,7 +238,7 @@ In case you want to process and handle the FCM notifications without using `FTRF
 public void onMessageReceived(RemoteMessage message) {
 
   // Create and handle a Futurae notification, containing a Bundle with any data from message.getData()
-  FTRNotification notification = notificationFactory.createNotification(service, data);
+  FTRNotification notification = FTRNotificationFactory.createNotification(service, data);
   notification.handle();
 }
 ```
