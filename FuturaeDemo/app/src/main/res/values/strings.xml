@@ -8,6 +8,8 @@
   <string name="main_btn_qr_code_auth">Online QR Code Auth</string>
   <string name="main_btn_qr_code_offline_auth">Offline QR Code Auth</string>
   <string name="main_btn_qr_code_generic">Scan QR Code</string>
+  <string name="main_btn_accounts_migration_check">Check account migration</string>
+  <string name="main_btn_accounts_migration_execute">Execute account migration</string>
 
   <!--QR CODE-->
   <string name="qrcode_title">QR Code</string>

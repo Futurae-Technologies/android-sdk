@@ -11,10 +11,10 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.appcompat.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -23,8 +23,10 @@ import com.futurae.sdk.FuturaeCallback;
 import com.futurae.sdk.FuturaeClient;
 import com.futurae.sdk.FuturaeResultCallback;
 import com.futurae.sdk.MalformedQRCodeException;
+import com.futurae.sdk.UnknownAccountException;
 import com.futurae.sdk.approve.ApproveSession;
 import com.futurae.sdk.model.Account;
+import com.futurae.sdk.model.AccountsMigrationResource;
 import com.futurae.sdk.model.ApproveInfo;
 import com.futurae.sdk.model.CurrentTotp;
 import com.futurae.sdk.model.SessionInfo;
@@ -188,6 +190,70 @@ public class MainActivity extends AppCompatActivity {
     protected void onQRCodeGeneric() {
         Log.i(TAG, "Generic QR Code started");
         startActivityForResult(FTRQRCodeActivity.getIntent(this, true, false), FTRQRCodeActivity.RESULT_BARCODE_GENERIC);
+    }
+
+    @OnClick(R.id.main_btn_accounts_migration_check)
+    protected void onAccountsMigrationCheck() {
+        Log.i(TAG, "Accounts Migration check started");
+
+        FuturaeClient.sharedClient().checkAccountMigrationPossible(
+                new FuturaeResultCallback<Integer>() {
+                    @Override
+                    public void success(Integer numAccounts) {
+
+                        if(numAccounts > 0) {
+
+                            Log.i(TAG, "Accounts Migration is possible. Number of accounts that can be migrated: " + numAccounts);
+                            showAlert("Success", "Accounts Migration is possible.\nNumber of accounts that can be migrated: " + numAccounts);
+                        }
+                        else {
+
+                            Log.i(TAG, "Accounts Migration is not possible. There were no accounts found that can be migrated.");
+                            showAlert("Info", "Accounts Migration is not possible\nNo accounts found that can be migrated");
+                        }
+                    }
+
+                    @Override
+                    public void failure(Throwable throwable) {
+                        Log.e(TAG, throwable.getLocalizedMessage());
+                        showAlert("Error", "Checking for accounts migration failed");
+                    }
+                });
+    }
+
+
+    @OnClick(R.id.main_btn_accounts_migration_execute)
+    protected void onAccountsMigrationExecute() {
+        Log.i(TAG, "Accounts Migration execution started");
+
+        FuturaeClient.sharedClient().executeAccountMigration(
+                new FuturaeResultCallback<AccountsMigrationResource.MigrationAccount[]>() {
+                    @Override
+                    public void success(AccountsMigrationResource.MigrationAccount[] result) {
+
+                        StringBuilder userIdsMigrated = new StringBuilder();
+
+                        for (int i = 0; i < result.length; i++) {
+
+                            if(i > 0) {
+                                userIdsMigrated.append("\n");
+                            }
+
+                            userIdsMigrated.append(result[i].getUsername());
+                        }
+
+                        Log.i(TAG, "Accounts migration successful. Accounts migrated (total: " + result.length + "): " + userIdsMigrated);
+                        showAlert("Accounts migration successful", "Accounts migrated (total: " + result.length + "):\n\n" + userIdsMigrated);
+                    }
+
+                    @Override
+                    public void failure(Throwable throwable) {
+                        Log.e(TAG, throwable.getLocalizedMessage());
+                        showAlert("Error", "Accounts migration execution failed");
+                    }
+                }
+
+        );
     }
 
     // QRCode callbacks
@@ -362,11 +428,17 @@ public class MainActivity extends AppCompatActivity {
         builder.setPositiveButton("Approve", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
                 String verificationSignature = "";
+
                 try {
                     verificationSignature = FuturaeClient.sharedClient().computeVerificationCodeFromQrcode(qrCode);
                 } catch (MalformedQRCodeException e) {
                     e.printStackTrace();
+                    return;
+                } catch (UnknownAccountException e) {
+                    e.printStackTrace();
+                    return;
                 }
+
                 showOfflineQrcodeSignatureDialog(verificationSignature);
             }
         });
