@@ -47,7 +47,6 @@ crashlytics.properties
 #          for gradlew to work properly.
 .gradle/
 build/
-gradle.properties
 
 # Facebook Buck
 /buck-cache
