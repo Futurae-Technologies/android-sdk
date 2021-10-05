@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
 
 android {
     compileSdkVersion 29
@@ -6,9 +7,9 @@ android {
 
     defaultConfig {
         applicationId "com.futurae.futuraedemo"
-        minSdkVersion 16
+        minSdkVersion 21
         targetSdkVersion 29
-        versionCode 5
+        versionCode 6
         versionName "1.0.0"
         resConfigs "en", "el"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
@@ -46,7 +47,10 @@ repositories {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
 
-    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
+    implementation "androidx.core:core-ktx:1.6.0"
+    implementation 'androidx.appcompat:appcompat:1.3.1'
     implementation 'com.google.android.gms:play-services-vision:20.1.3'
     implementation 'com.jakewharton:butterknife:10.2.3'
     annotationProcessor 'com.jakewharton:butterknife-compiler:10.2.3'
@@ -57,7 +61,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-core:18.0.3'
     implementation 'com.google.firebase:firebase-messaging:21.1.0'
 
-    implementation('com.futurae.sdk:futuraekit:1.3.0')
+//    implementation('com.futurae.sdk:futuraekit:1.3.0')
 
 //  Use these if you are NOT using Maven
 //    implementation 'com.squareup.retrofit2:retrofit:2.4.0'
@@ -67,7 +71,7 @@ dependencies {
 //    implementation 'com.squareup.okhttp3:logging-interceptor:3.11.0'
 //    implementation 'com.github.nisrulz:easydeviceinfo-base:2.4.1'
 //    implementation 'com.google.code.gson:gson:2.8.6'
-//    implementation files('src/main/libs/futuraekit.aar')
+    implementation files('../../futuraekit.aar')
 
 }
 
