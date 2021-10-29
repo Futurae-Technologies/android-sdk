@@ -61,7 +61,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-core:18.0.3'
     implementation 'com.google.firebase:firebase-messaging:21.1.0'
 
-    implementation('com.futurae.sdk:futuraekit:1.3.1')
+    implementation('com.futurae.sdk:futuraekit:1.3.2')
 
 //  Use these if you are NOT using Maven
 //    implementation 'com.squareup.retrofit2:retrofit:2.4.0'
