@@ -4,6 +4,8 @@ import android.app.Application;
 import com.futurae.sdk.FuturaeClient;
 import com.futurae.sdk.Kit;
 
+import timber.log.Timber;
+
 public class AppMain extends Application {
 
     // overrides
@@ -11,6 +13,8 @@ public class AppMain extends Application {
     public final void onCreate() {
 
         super.onCreate();
+
+        Timber.plant(new Timber.DebugTree());
 
         FuturaeClient.launch(this, (Kit)null);
     }
