@@ -15,7 +15,7 @@ public class AppMain extends Application {
         super.onCreate();
 
         Timber.plant(new Timber.DebugTree());
-
-        FuturaeClient.launch(this, (Kit)null);
+        boolean adaptiveEnabled = false;
+        FuturaeClient.launch(this, adaptiveEnabled, (Kit)null);
     }
 }

@@ -19,4 +19,13 @@
   <string name="error_low_storage">QR code scanning cannot be performed due to low device storage</string>
   <string name="main_btn_logout">Logout</string>
 
+  <string name="message_adaptive_guide">To start a collection, move the app to the background and then back to the foreground (ALT + TAB).</string>
+  <string name="message_adaptive_enroll">You need to enroll an account before adaptive collection is enabled</string>
+  <string name="status">status</string>
+  <string name="menu_home">Home</string>
+  <string name="menu_settings">Settings</string>
+  <string name="menu_history">History</string>
+  <string name="menu_live">Live</string>
+  <string name="message_collection_complete">Collection complete. You can View it in History Tab</string>
+
 </resources>
