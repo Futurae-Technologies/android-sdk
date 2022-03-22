@@ -18,6 +18,7 @@ import com.futurae.futuraedemo.databinding.ActivityHomeBinding
 import com.futurae.sdk.*
 import com.futurae.sdk.approve.ApproveSession
 import com.futurae.sdk.model.AccountsMigrationResource
+import com.futurae.sdk.model.AccountsStatus
 import com.futurae.sdk.model.SessionInfo
 import com.google.android.gms.vision.barcode.Barcode
 import timber.log.Timber
@@ -129,6 +130,34 @@ class HomeActivity : AppCompatActivity() {
             )
         }
 
+        binding.performAccStatusButton.setOnClickListener {
+            val accounts = FuturaeClient.sharedClient().accounts
+            if (accounts == null || accounts.size == 0) {
+                showAlert("Error", "No account enrolled")
+                return@setOnClickListener
+            }
+
+            FuturaeClient.sharedClient()
+                .getAccountsStatus(accounts.map { it.userId }, object : FuturaeResultCallback<AccountsStatus> {
+                    override fun success(accountsStatus: AccountsStatus) {
+                        accountsStatus.statuses.forEach { accountStatus ->
+                            Timber.d("ScaDebug: Found SCA Account for futurae user id ${accountStatus.userId}")
+                            accountStatus.sessionInfos.forEach { sessionInfo ->
+                                Timber.d("ScaDebug: Found SCA Session ${sessionInfo.sessionId}")
+                                if (sessionInfo.factor == FuturaeClient.APPROVE) {
+                                    Timber.d("ScaDebug: SCA Session ${sessionInfo.sessionId} is APPROVE")
+                                }
+                            }
+                        }
+                    }
+
+                    override fun failure(t: Throwable) {
+                        Timber.e(t)
+                    }
+
+                })
+        }
+
         checkRuntimePermissions()
     }
 
@@ -235,12 +264,12 @@ class HomeActivity : AppCompatActivity() {
                         }
 
                         override fun failure(t: Throwable) {
+                            Timber.e(t)
                             showAlert("Error", "Error: ${t.message}")
                         }
                     })
             } catch (e: MalformedQRCodeException) {
                 Timber.e(e)
-                return
             }
         } ?: showAlert("Error", "QR code not found from result")
     }
@@ -271,6 +300,7 @@ class HomeActivity : AppCompatActivity() {
                     }
 
                     override fun failure(throwable: Throwable) {
+                        Timber.e(throwable)
                         showAlert("Error", throwable.message ?: "")
                     }
                 })
