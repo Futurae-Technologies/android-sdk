@@ -71,9 +71,9 @@ dependencies {
 
     implementation 'com.jakewharton.timber:timber:5.0.1'
 
-    implementation 'com.futurae.sdk:futuraekit:1.4.0'
-
-//    Use these if you are NOT using Maven
+    implementation 'com.futurae.sdk:futuraekit:1.4.1'
+//
+////    Use these if you are NOT using Maven
 //    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
 //    implementation 'com.squareup.retrofit2:converter-moshi:2.4.0'
 //    implementation 'com.squareup.moshi:moshi-adapters:1.6.0'
@@ -88,7 +88,7 @@ dependencies {
 //    implementation "androidx.room:room-ktx:2.4.1"
 //    kapt "androidx.room:room-compiler:2.4.1"
 //    implementation "androidx.work:work-runtime-ktx:2.7.1"
-//    implementation files('libs/futuraekit.aar')
+//    implementation files('libs/futuraekit-xxx.aar')
 
 }
 
