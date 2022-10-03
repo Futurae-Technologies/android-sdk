@@ -19,3 +19,18 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+-keep public class com.futurae.sdk.model.** {
+    *;
+}
+
+-keep class com.futurae.sdk.DeviceInfo {
+    *;
+}
+
+-keep public enum com.futurae.sdk.model.Account$** {
+    **[] $VALUES;
+    public *;
+}
+
+-keep class com.futurae.sdk.exception.** { *; }

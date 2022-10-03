@@ -27,11 +27,9 @@ android {
 
         release {
             minifyEnabled true
-
-            proguardFile getDefaultProguardFile('proguard-android.txt')
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-
             signingConfig signingConfigs.debug
+
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
 
     }
@@ -85,20 +83,21 @@ dependencies {
 
     implementation 'com.andrognito.pinlockview:pinlockview:2.1.0'
 
-    implementation 'com.futurae.sdk:futuraekit:2.0.0'
+//   Recommended to use Maven dependency
+//    implementation 'com.futurae.sdk:futuraekit:2.0.0'
 
-//    Use these if you are NOT using Maven
-//    implementation files('libs/futuraekit-java-release.aar')
-//    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
-//    implementation 'com.squareup.retrofit2:converter-moshi:2.9.0'
-//    implementation 'com.squareup.moshi:moshi-adapters:1.6.0'
-//    implementation "com.squareup.moshi:moshi-kotlin:1.6.0"
-//    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
-//    implementation 'com.github.nisrulz:easydeviceinfo-base:2.4.1'
-//    implementation 'com.google.code.gson:gson:2.8.9'
-//    implementation "androidx.biometric:biometric:1.1.0"
-//    implementation "androidx.security:security-crypto:1.0.0"
-//    implementation "com.nimbusds:nimbus-jose-jwt:7.8.1"
+//   Use these if you are NOT using Maven
+    implementation files('libs/futuraekit-java-release.aar')
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-moshi:2.9.0'
+    implementation 'com.squareup.moshi:moshi-adapters:1.6.0'
+    implementation "com.squareup.moshi:moshi-kotlin:1.6.0"
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
+    implementation 'com.github.nisrulz:easydeviceinfo-base:2.4.1'
+    implementation 'com.google.code.gson:gson:2.8.9'
+    implementation "androidx.biometric:biometric:1.1.0"
+    implementation "androidx.security:security-crypto:1.0.0"
+    implementation "com.nimbusds:nimbus-jose-jwt:7.8.1"
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
