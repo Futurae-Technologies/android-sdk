@@ -15,7 +15,7 @@ class App : Application() {
 
     fun launchFuturaeSDKWithConfig(config: LockConfigurationType, unlockDuration: Int) {
         //New Futurae SDK unlock API
-        FuturaeSDK.INSTANCE.launch(
+        FuturaeSDK.launch(
             this, SDKConfiguration.Builder()
                 .setLockConfigurationType(config)
                 .setUnlockDuration(unlockDuration)

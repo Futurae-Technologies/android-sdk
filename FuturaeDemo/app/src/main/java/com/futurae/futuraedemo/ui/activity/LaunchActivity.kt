@@ -59,7 +59,7 @@ class LaunchActivity : ComponentActivity() {
             startHomeActivityWithConfig(LockConfigurationType.NONE)
         }
         binding.buttonReset.setOnClickListener {
-            FuturaeSDK.INSTANCE.reset(this)
+            FuturaeSDK.reset(this)
         }
     }
 
