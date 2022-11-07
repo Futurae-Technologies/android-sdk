@@ -43,13 +43,13 @@ abstract class FragmentSDKOperations : Fragment() {
 
     protected fun onLogout() {
         // For demo purposes, we simply logout the first account we can find
-        val accounts = FuturaeSDK.getClient().accounts
+        val accounts = FuturaeSDK.INSTANCE.getClient().accounts
         if (accounts == null || accounts.size == 0) {
             showAlert("Error", "No account to logout")
             return
         }
         val account = accounts[0]
-        FuturaeSDK.getClient().logout(account.userId,
+        FuturaeSDK.INSTANCE.getClient().logout(account.userId,
             object : FuturaeCallback {
                 override fun success() {
                     showAlert("Success", "Logged out " + account.username)
@@ -62,14 +62,14 @@ abstract class FragmentSDKOperations : Fragment() {
     }
 
     protected fun onTOTPAuth() {
-        val accounts = FuturaeSDK.getClient().accounts
+        val accounts = FuturaeSDK.INSTANCE.getClient().accounts
         if (accounts == null || accounts.size == 0) {
             showAlert("Error", "No account enrolled")
             return
         }
         val account = accounts[0]
         try {
-            val totp = FuturaeSDK.getClient().nextTotp(account.userId)
+            val totp = FuturaeSDK.INSTANCE.getClient().nextTotp(account.userId)
             showAlert(
                 "TOTP",
                 "Code: ${totp.getPasscode()}\nRemaining seconds: ${totp.getRemainingSecs()}"
@@ -81,7 +81,7 @@ abstract class FragmentSDKOperations : Fragment() {
     }
 
     protected fun onAccountsMigrationCheck() {
-        FuturaeSDK.getClient().checkAccountMigrationPossible(
+        FuturaeSDK.INSTANCE.getClient().checkAccountMigrationPossible(
             object : FuturaeResultCallback<Int> {
                 override fun success(numAccounts: Int) {
                     if (numAccounts > 0) {
@@ -105,7 +105,7 @@ abstract class FragmentSDKOperations : Fragment() {
 
 
     protected fun onAccountsMigrationExecute() {
-        FuturaeSDK.getClient().executeAccountMigration(
+        FuturaeSDK.INSTANCE.getClient().executeAccountMigration(
             object : FuturaeResultCallback<Array<MigrationAccount>> {
                 override fun success(result: Array<MigrationAccount>) {
                     val userIdsMigrated = StringBuilder()
@@ -131,7 +131,7 @@ abstract class FragmentSDKOperations : Fragment() {
     // QRCode callbacks
     private fun onEnrollQRCodeScanned(data: Intent) {
         (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
-            FuturaeSDK.getClient().enroll(
+            FuturaeSDK.INSTANCE.getClient().enroll(
                 qrcode.rawValue,
                 object : FuturaeCallback {
                     override fun success() {
@@ -156,7 +156,7 @@ abstract class FragmentSDKOperations : Fragment() {
                 e.printStackTrace()
                 return
             }
-            FuturaeSDK.getClient().sessionInfoByToken(userId, sessionToken,
+            FuturaeSDK.INSTANCE.getClient().sessionInfoByToken(userId, sessionToken,
                 object : FuturaeResultCallback<SessionInfo?> {
                     override fun success(sessionInfo: SessionInfo?) {
                         val session = ApproveSession(sessionInfo)
@@ -165,7 +165,7 @@ abstract class FragmentSDKOperations : Fragment() {
                             "Would you like to approve the request?${session.toDialogMessage()}",
                             "Approve",
                             {
-                                FuturaeSDK.getClient().approveAuth(
+                                FuturaeSDK.INSTANCE.getClient().approveAuth(
                                     session.userId,
                                     session.sessionId, object : FuturaeCallback {
                                         override fun success() {
@@ -184,7 +184,7 @@ abstract class FragmentSDKOperations : Fragment() {
                             },
                             "Deny",
                             {
-                                FuturaeSDK.getClient().rejectAuth(
+                                FuturaeSDK.INSTANCE.getClient().rejectAuth(
                                     session.userId,
                                     session.sessionId, false, object : FuturaeCallback {
                                         override fun success() {
@@ -228,7 +228,7 @@ abstract class FragmentSDKOperations : Fragment() {
             }
             showDialog("Approve", "Request Info: ${sb}", "Approve", {
                 val verificationSignature = try {
-                    FuturaeSDK.getClient().computeVerificationCodeFromQrcode(qrCode)
+                    FuturaeSDK.INSTANCE.getClient().computeVerificationCodeFromQrcode(qrCode)
                 } catch (e: Exception) {
                     showErrorAlert("SDK Unlock", e)
                     return@showDialog

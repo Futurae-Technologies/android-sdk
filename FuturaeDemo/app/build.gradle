@@ -72,10 +72,6 @@ dependencies {
 
     implementation 'com.google.android.gms:play-services-vision:20.1.3'
 
-    implementation platform('com.google.firebase:firebase-bom:29.0.1')
-    implementation 'com.google.firebase:firebase-messaging'
-    implementation 'com.google.firebase:firebase-iid'
-
     implementation 'com.jakewharton.timber:timber:5.0.1'
     implementation 'com.jakewharton:butterknife:10.2.3'
     kapt 'com.jakewharton:butterknife-compiler:10.2.3'
@@ -83,10 +79,9 @@ dependencies {
     implementation 'com.andrognito.pinlockview:pinlockview:2.1.0'
 
 //   Recommended to use Maven dependency
-    implementation 'com.futurae.sdk:futuraekit:2.0.1'
-
+    implementation 'com.futurae.sdk:futuraekit:2.0.2'
 //   Use these if you are NOT using Maven
-//    implementation files('libs/futuraekit-java-release.aar')
+//    implementation files('libs/futuraekit-2.0.2.aar')
 //    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
 //    implementation 'com.squareup.retrofit2:converter-moshi:2.9.0'
 //    implementation 'com.squareup.moshi:moshi-adapters:1.14.0'
@@ -97,6 +92,9 @@ dependencies {
 //    implementation "androidx.biometric:biometric:1.1.0"
 //    implementation "androidx.security:security-crypto:1.0.0"
 //    implementation "com.nimbusds:nimbus-jose-jwt:7.8.1"
+//    implementation platform('com.google.firebase:firebase-bom:29.0.1')
+//    implementation 'com.google.firebase:firebase-messaging'
+//    implementation 'com.google.firebase:firebase-iid'
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'

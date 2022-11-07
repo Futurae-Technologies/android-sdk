@@ -26,7 +26,7 @@ class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.buttonUnlock.setOnClickListener {
-            FuturaeSDK.getClient().unlockWithBiometrics(
+            FuturaeSDK.INSTANCE.getClient().unlockWithBiometrics(
                 requireActivity(),
                 "Unlock SDK",
                 "Authenticate with biometrics",
@@ -48,7 +48,7 @@ class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
             )
         }
         binding.buttonLock.setOnClickListener {
-            FuturaeSDK.getClient().lock()
+            FuturaeSDK.INSTANCE.getClient().lock()
             onLocked(binding.textTimerValue, binding.textStatusValue)
         }
         binding.buttonEnroll.setOnClickListener {
@@ -70,6 +70,6 @@ class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
         binding.buttonMigrationExecute.setOnClickListener {
             onAccountsMigrationExecute()
         }
-        binding.unlockMethodsValue.text = FuturaeSDK.getClient().activeUnlockMethods.joinToString()
+        binding.unlockMethodsValue.text = FuturaeSDK.INSTANCE.getClient().activeUnlockMethods.joinToString()
     }
 }

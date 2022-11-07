@@ -48,7 +48,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 						REQUEST_ENROLL_WITH_PIN -> {
 							if (FuturaeClient.getQrcodeType(qrcode.rawValue) == FuturaeClient.QR_ENROLL) {
 								getPinWithCallback {
-									FuturaeSDK.getClient().enrollAndSetupSDKPin(
+									FuturaeSDK.INSTANCE.getClient().enrollAndSetupSDKPin(
 										qrcode.rawValue,
 										it,
 										object : Callback<Unit> {
@@ -82,7 +82,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 						}
 						REQUEST_QR_OFFLINE_WITH_PIN -> {
 							if (FuturaeClient.getQrcodeType(qrcode.rawValue) == FuturaeClient.QR_OFFLINE) {
-								val accounts = FuturaeSDK.getClient().accounts
+								val accounts = FuturaeSDK.INSTANCE.getClient().accounts
 								if (accounts == null || accounts.size == 0) {
 									showAlert("SDK Unlock", "No account enrolled")
 									currentRequest = 0
@@ -106,7 +106,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 											}
 											showDialog("Approve", "Request Info: $sb", "Approve", {
 												val verificationSignature = try {
-													FuturaeSDK.getClient()
+													FuturaeSDK.INSTANCE.getClient()
 														.computeVerificationCodeFromQrcode(
 															qrcode.rawValue,
 															it
@@ -162,7 +162,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 									"Request Info: ${sb}",
 									"Approve with biometrics",
 									{
-										FuturaeSDK.getClient()
+										FuturaeSDK.INSTANCE.getClient()
 											.computeVerificationCodeFromQrcodeWithBiometrics(
 												qrCode,
 												requireActivity(),
@@ -225,7 +225,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		super.onViewCreated(view, savedInstanceState)
 		binding.buttonUnlockWithBiometrics.setOnClickListener {
-			FuturaeSDK.getClient().unlockWithBiometrics(
+			FuturaeSDK.INSTANCE.getClient().unlockWithBiometrics(
 				requireActivity(),
 				"Unlock SDK",
 				"Authenticate with biometrics",
@@ -243,12 +243,12 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 			)
 		}
 		binding.buttonLock.setOnClickListener {
-			FuturaeSDK.getClient().lock()
+			FuturaeSDK.INSTANCE.getClient().lock()
 			onLocked(binding.textTimerValue, binding.textStatusValue)
 		}
 		binding.buttonChangePin.setOnClickListener {
 			getPinWithCallback {
-				FuturaeSDK.getClient().changeSDKPin(it, object : Callback<Unit> {
+				FuturaeSDK.INSTANCE.getClient().changeSDKPin(it, object : Callback<Unit> {
 					override fun onSuccess(result: Unit) {
 						Toast.makeText(
 							requireContext(),
@@ -266,7 +266,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 		}
 		binding.buttonUnlockWithPin.setOnClickListener {
 			getPinWithCallback {
-				FuturaeSDK.getClient().unlockWithSDKPin(it, object : Callback<Unit> {
+				FuturaeSDK.INSTANCE.getClient().unlockWithSDKPin(it, object : Callback<Unit> {
 					override fun onSuccess(result: Unit) {
 						onUnlocked(binding.textTimerValue, binding.textStatusValue)
 					}
@@ -298,14 +298,14 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 		}
 		binding.buttonTotpOffline.setOnClickListener {
 			getPinWithCallback {
-				val accounts = FuturaeSDK.getClient().accounts
+				val accounts = FuturaeSDK.INSTANCE.getClient().accounts
 				if (accounts == null || accounts.size == 0) {
 					showAlert("SDK Unlock", "No account enrolled")
 				} else {
 					val account = accounts[0]
 					try {
 						val totp =
-							FuturaeSDK.getClient().nextTotp(account.userId, it)
+							FuturaeSDK.INSTANCE.getClient().nextTotp(account.userId, it)
 						showAlert(
 							"TOTP",
 							"Code: ${totp.getPasscode()}\nRemaining seconds: ${totp.getRemainingSecs()}"
@@ -323,7 +323,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 			)
 		}
 		binding.buttonActivateBiometrics.setOnClickListener {
-			FuturaeSDK.getClient().activateBiometrics(
+			FuturaeSDK.INSTANCE.getClient().activateBiometrics(
 				requireActivity(),
 				"Unlock SDK",
 				"Activate biometrics",
@@ -333,7 +333,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 					override fun onSuccess(result: Unit) {
 						showAlert("SDK Unlock", "Biometric auth activated")
 						binding.unlockMethodsValue.text =
-							FuturaeSDK.getClient().activeUnlockMethods.joinToString()
+							FuturaeSDK.INSTANCE.getClient().activeUnlockMethods.joinToString()
 					}
 
 					override fun onError(throwable: Throwable) {
@@ -344,11 +344,11 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 			)
 		}
 		binding.buttonDeactivateBiometrics.setOnClickListener {
-			FuturaeSDK.getClient().deactivateBiometrics(object : Callback<Unit> {
+			FuturaeSDK.INSTANCE.getClient().deactivateBiometrics(object : Callback<Unit> {
 				override fun onSuccess(result: Unit) {
 					showAlert("SDK Unlock", "Deactivated biometric authentication")
 					binding.unlockMethodsValue.text =
-						FuturaeSDK.getClient().activeUnlockMethods.joinToString()
+						FuturaeSDK.INSTANCE.getClient().activeUnlockMethods.joinToString()
 				}
 
 				override fun onError(throwable: Throwable) {
@@ -356,7 +356,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 				}
 			})
 		}
-		binding.unlockMethodsValue.text = FuturaeSDK.getClient().activeUnlockMethods.joinToString()
+		binding.unlockMethodsValue.text = FuturaeSDK.INSTANCE.getClient().activeUnlockMethods.joinToString()
 		binding.buttonMigrationCheck.setOnClickListener {
 			onAccountsMigrationCheck()
 		}
@@ -366,19 +366,19 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
 		binding.buttonUnlockMethods.setOnClickListener {
 			showAlert(
 				"SDK Unlock",
-				"Active Unlock methods:\n" + FuturaeSDK.getClient().activeUnlockMethods.joinToString()
+				"Active Unlock methods:\n" + FuturaeSDK.INSTANCE.getClient().activeUnlockMethods.joinToString()
 			)
 			binding.unlockMethodsValue.text =
-				FuturaeSDK.getClient().activeUnlockMethods.joinToString()
+				FuturaeSDK.INSTANCE.getClient().activeUnlockMethods.joinToString()
 		}
 		binding.buttonTotpOfflineBio.setOnClickListener {
-			val accounts = FuturaeSDK.getClient().accounts
+			val accounts = FuturaeSDK.INSTANCE.getClient().accounts
 			if (accounts == null || accounts.size == 0) {
 				showAlert("SDK Unlock", "No account enrolled")
 			} else {
 				val account = accounts[0]
 				try {
-					FuturaeSDK.getClient().nextTotpWithBiometrics(
+					FuturaeSDK.INSTANCE.getClient().nextTotpWithBiometrics(
 						account.userId,
 						requireActivity(),
 						"Bio auth for TOTP",
