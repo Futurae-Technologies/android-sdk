@@ -79,7 +79,7 @@ dependencies {
     implementation 'com.andrognito.pinlockview:pinlockview:2.1.0'
 
 //   Recommended to use Maven dependency
-    implementation 'com.futurae.sdk:futuraekit:2.0.3'
+    implementation 'com.futurae.sdk:futuraekit:2.0.4'
 //   Use these if you are NOT using Maven
 //    implementation files('libs/futuraekit-2.0.3.aar')
 //    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
@@ -94,8 +94,7 @@ dependencies {
 //    implementation "com.nimbusds:nimbus-jose-jwt:7.8.1"
 //    implementation platform('com.google.firebase:firebase-bom:29.0.1')
 //    implementation 'com.google.firebase:firebase-messaging'
-//    implementation 'com.google.firebase:firebase-iid'
-//    implementation "androidx.work:work-runtime-ktx:${versions.androidx.workManager}"
+//    implementation "androidx.work:work-runtime-ktx:2.7.1"
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
