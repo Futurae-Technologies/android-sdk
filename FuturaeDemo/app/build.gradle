@@ -77,9 +77,9 @@ dependencies {
     implementation 'com.andrognito.pinlockview:pinlockview:2.1.0'
 
 //   Recommended to use Maven dependency
-    implementation 'com.futurae.sdk:futuraekit:2.0.5'
+    implementation 'com.futurae.sdk:futuraekit:2.0.6'
 //   Use these if you are NOT using Maven
-//    implementation files('libs/futuraekit-2.0.5.aar')
+//    implementation files('libs/futuraekit-2.0.6.aar')
 //    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
 //    implementation 'com.squareup.retrofit2:converter-moshi:2.9.0'
 //    implementation 'com.squareup.moshi:moshi-adapters:1.14.0'
