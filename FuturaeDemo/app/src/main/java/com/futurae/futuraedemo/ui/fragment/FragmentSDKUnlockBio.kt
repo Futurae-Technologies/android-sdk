@@ -8,6 +8,7 @@ import com.futurae.futuraedemo.databinding.FragmentSdkUnlockBioBinding
 import com.futurae.futuraedemo.ui.showErrorAlert
 import com.futurae.sdk.Callback
 import com.futurae.sdk.FuturaeSDK
+import com.futurae.sdk.model.UserPresenceVerification
 import timber.log.Timber
 
 class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
@@ -26,14 +27,14 @@ class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.buttonUnlock.setOnClickListener {
-            FuturaeSDK.INSTANCE.getClient().unlockWithBiometrics(
+            FuturaeSDK.INSTANCE.client.unlockWithBiometrics(
                 requireActivity(),
                 "Unlock SDK",
                 "Authenticate with biometrics",
                 "Authentication is required to unlock SDK operations",
                 "cancel",
-                object : Callback<Unit> {
-                    override fun onSuccess(result: Unit) {
+                object : Callback<UserPresenceVerification> {
+                    override fun onSuccess(result: UserPresenceVerification) {
                         binding.textStatusValue.text = "Unlocked"
                         onUnlocked(binding.textTimerValue, binding.textStatusValue)
                     }
@@ -69,6 +70,9 @@ class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
         }
         binding.buttonMigrationExecute.setOnClickListener {
             onAccountsMigrationExecute()
+        }
+        binding.buttonAccHistory.setOnClickListener {
+            getAccountHistory()
         }
         binding.unlockMethodsValue.text = FuturaeSDK.INSTANCE.getClient().activeUnlockMethods.joinToString()
     }

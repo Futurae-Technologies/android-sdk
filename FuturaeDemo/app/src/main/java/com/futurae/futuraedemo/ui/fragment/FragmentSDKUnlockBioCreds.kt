@@ -8,6 +8,7 @@ import com.futurae.futuraedemo.databinding.FragmentSdkUnlockBioCredsBinding
 import com.futurae.futuraedemo.ui.showErrorAlert
 import com.futurae.sdk.Callback
 import com.futurae.sdk.FuturaeSDK
+import com.futurae.sdk.model.UserPresenceVerification
 import timber.log.Timber
 
 class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
@@ -31,13 +32,14 @@ class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
                 "Unlock SDK",
                 "Authenticate with biometrics or device credentials",
                 "Authentication is required to unlock SDK operations",
-                object : Callback<Unit> {
-                    override fun onSuccess(result: Unit) {
+                object : Callback<UserPresenceVerification> {
+                    override fun onSuccess(result: UserPresenceVerification) {
                         binding.textStatusValue.text = "Unlocked"
                         onUnlocked(binding.textTimerValue, binding.textStatusValue)
                     }
 
                     override fun onError(throwable: Throwable) {
+                        Timber.e(throwable)
                         onLocked(binding.textTimerValue, binding.textStatusValue)
                         showErrorAlert("SDK Unlock", throwable)
                     }

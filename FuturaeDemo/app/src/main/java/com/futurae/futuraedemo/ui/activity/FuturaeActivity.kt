@@ -11,11 +11,11 @@ import androidx.fragment.app.FragmentActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.futurae.futuraedemo.ui.showAlert
 import com.futurae.futuraedemo.ui.showDialog
-import com.futurae.futuraedemo.ui.showErrorAlert
 import com.futurae.futuraedemo.ui.toDialogMessage
 import com.futurae.sdk.FuturaeCallback
 import com.futurae.sdk.FuturaeClient
 import com.futurae.sdk.FuturaeResultCallback
+import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.approve.ApproveSession
 import com.futurae.sdk.model.SessionInfo
 import com.futurae.sdk.utils.NotificationUtils
@@ -71,53 +71,72 @@ abstract class FuturaeActivity : FragmentActivity() {
     /**
      * A method to allow the App the request unlock if necessary. Then resume if succesful via callback
      */
-    abstract fun onReceivedUri(callback: () -> Unit)
+    fun onReceivedUri(callback: () -> Unit) {
+        if (FuturaeSDK.INSTANCE.getClient().isLocked) {
+            showDialog(
+                "URI received",
+                "Received URI but SDK is locked. Please unlock to continue",
+                "ok",
+                { }
+            )
+        } else {
+            callback()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        intent?.getStringExtra(EXTRA_URI_STRING)?.let {
+            handleUri(it)
+        }
+    }
 
-        //Handle URI from intent
-        intent.extras?.getString(EXTRA_URI_STRING)?.takeIf { it.isNotBlank() }?.let { uriCall ->
-            onReceivedUri {
-                if (uriCall.contains("enroll")) {
-                    FuturaeClient.sharedClient().handleUri(uriCall, object : FuturaeCallback {
-                        override fun success() {
-                            showDialog("Success", "Successfully enrolled", "Ok", { })
+    fun handleUri(uriCall: String) {
+        onReceivedUri {
+            if (uriCall.contains("enroll")) {
+                FuturaeClient.sharedClient().handleUri(uriCall, object : FuturaeCallback {
+                    override fun success() {
+                        showDialog("Success", "Successfully enrolled", "Ok", { })
+                    }
+
+                    override fun failure(throwable: Throwable) {
+                        showDialog("Error", "Could not handle URI call", "Ok", { })
+                    }
+                })
+            } else if (uriCall.contains("auth")) {
+
+                val userId = FuturaeClient.getUserIdFromUri(uriCall)
+                val sessionToken = FuturaeClient.getSessionTokenFromUri(uriCall)
+
+                FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionToken,
+                    object : FuturaeResultCallback<SessionInfo?> {
+                        override fun success(sessionInfo: SessionInfo?) {
+                            val session = ApproveSession(sessionInfo)
+                            showDialog(
+                                "approve",
+                                "Would you like to approve the request?${session.toDialogMessage()}",
+                                "Approve",
+                                { approveAuth(session) },
+                                "Deny",
+                                { rejectAuth(session) })
                         }
 
-                        override fun failure(throwable: Throwable) {
-                            showDialog("Error", "Could not handle URI call", "Ok", { })
+                        override fun failure(t: Throwable) {
+                            Timber.e(t)
                         }
                     })
-                } else if (uriCall.contains("auth")) {
-
-                    val userId = FuturaeClient.getUserIdFromUri(uriCall)
-                    val sessionToken = FuturaeClient.getSessionTokenFromUri(uriCall)
-
-                    FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionToken,
-                        object : FuturaeResultCallback<SessionInfo?> {
-                            override fun success(sessionInfo: SessionInfo?) {
-                                val session = ApproveSession(sessionInfo)
-                                showDialog(
-                                    "approve",
-                                    "Would you like to approve the request?${session.toDialogMessage()}",
-                                    "Approve",
-                                    { approveAuth(session) },
-                                    "Deny",
-                                    { rejectAuth(session) })
-                            }
-
-                            override fun failure(t: Throwable) {
-                                showErrorAlert("SDK Unlock",t)
-                            }
-                        })
-                } else {
-                    showDialog("Error", "Could not handle URI call", "Ok", { })
-                }
+            } else {
+                showDialog("Error", "Could not handle URI call", "Ok", { })
             }
-
         }
+    }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        //Handle URI from intent
+        intent?.getStringExtra(EXTRA_URI_STRING)?.takeIf { it.isNotBlank() }?.let { uriCall ->
+            handleUri(uriCall)
+        }
     }
 
     override fun onResume() {
@@ -137,7 +156,7 @@ abstract class FuturaeActivity : FragmentActivity() {
     }
 
     protected fun rejectAuth(session: ApproveSession) {
-        FuturaeClient.sharedClient()
+        FuturaeSDK.INSTANCE.client
             .sessionInfoById(
                 session.userId,
                 session.sessionId,
@@ -170,7 +189,7 @@ abstract class FuturaeActivity : FragmentActivity() {
     }
 
     protected fun approveAuth(session: ApproveSession) {
-        FuturaeClient.sharedClient()
+        FuturaeSDK.INSTANCE.client
             .sessionInfoById(
                 session.userId,
                 session.sessionId,

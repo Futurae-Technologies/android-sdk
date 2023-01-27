@@ -25,8 +25,6 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.widget.Toast;
-import butterknife.BindView;
-import butterknife.ButterKnife;
 
 import com.futurae.futuraedemo.R;
 import com.futurae.futuraedemo.ui.camera.BarcodeGraphic;
@@ -59,17 +57,8 @@ public class FTRQRCodeActivity extends AppCompatActivity implements QRCapturable
     private GestureDetector gestureDetector;
     private ScaleGestureDetector scaleGestureDetector;
 
-    @BindView(R.id.qrcode_preview)
     protected CameraSourcePreview preview;
-
-    @BindView(R.id.qrcode_overlay)
     protected GraphicOverlay<BarcodeGraphic> graphicOverlay;
-
-    // static public
-    public static Intent getIntent(Context context) {
-
-        return getIntent(context, false, false);
-    }
 
     public static Intent getIntent(Context context, boolean autofocus, boolean useFlash) {
 
@@ -86,7 +75,9 @@ public class FTRQRCodeActivity extends AppCompatActivity implements QRCapturable
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_qrcode);
-        ButterKnife.bind(this);
+
+        graphicOverlay = findViewById(R.id.qrcode_overlay);
+        preview = findViewById(R.id.qrcode_preview);
 
         Intent intent = getIntent();
 

@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import com.futurae.futuraedemo.ui.activity.ActivityAccountHistory
 import com.futurae.futuraedemo.ui.activity.FTRQRCodeActivity
 import com.futurae.futuraedemo.ui.showAlert
 import com.futurae.futuraedemo.ui.showDialog
@@ -34,6 +35,12 @@ abstract class FragmentSDKOperations : Fragment() {
                 } ?: throw IllegalStateException("Activity result without Intent")
             }
         }
+
+    protected fun getAccountHistory() {
+        FuturaeSDK.INSTANCE.getClient().accounts.firstOrNull()?.let {
+            startActivity(Intent(requireContext(), ActivityAccountHistory::class.java))
+        } ?: Toast.makeText(requireContext(), "No account enrolled", Toast.LENGTH_SHORT).show()
+    }
 
     protected fun scanQRCode() {
         getQRCodeCallback.launch(
@@ -75,6 +82,7 @@ abstract class FragmentSDKOperations : Fragment() {
                 "Code: ${totp.getPasscode()}\nRemaining seconds: ${totp.getRemainingSecs()}"
             )
         } catch (e: LockOperationIsLockedException) {
+            Timber.e(e)
             showErrorAlert("SDK Unlock", e)
         }
 
@@ -85,11 +93,13 @@ abstract class FragmentSDKOperations : Fragment() {
             object : FuturaeResultCallback<Int> {
                 override fun success(numAccounts: Int) {
                     if (numAccounts > 0) {
+                        Timber.i("Accounts Migration is possible. Number of accounts that can be migrated: $numAccounts")
                         showAlert(
                             "Success",
                             "Accounts Migration is possible.\nNumber of accounts that can be migrated: $numAccounts"
                         )
                     } else {
+                        Timber.i("Accounts Migration is not possible. There were no accounts found that can be migrated.")
                         showAlert(
                             "Info",
                             "Accounts Migration is not possible\nNo accounts found that can be migrated"
@@ -98,6 +108,7 @@ abstract class FragmentSDKOperations : Fragment() {
                 }
 
                 override fun failure(throwable: Throwable) {
+                    Timber.e(throwable)
                     showErrorAlert("SDK Unlock", throwable)
                 }
             })
@@ -115,6 +126,7 @@ abstract class FragmentSDKOperations : Fragment() {
                         }
                         userIdsMigrated.append(result[i].username)
                     }
+                    Timber.i("Accounts migration successful. Accounts migrated (total: " + result.size + "): " + userIdsMigrated)
                     showAlert(
                         "Accounts migration successful",
                         """Accounts migrated (total: ${result.size}):$userIdsMigrated""".trimIndent()
@@ -122,6 +134,7 @@ abstract class FragmentSDKOperations : Fragment() {
                 }
 
                 override fun failure(throwable: Throwable) {
+                    Timber.e(throwable.localizedMessage)
                     showErrorAlert("SDK Unlock", throwable)
                 }
             }
@@ -135,10 +148,12 @@ abstract class FragmentSDKOperations : Fragment() {
                 qrcode.rawValue,
                 object : FuturaeCallback {
                     override fun success() {
+                        Timber.i("Enrollment successful")
                         showAlert("Success", "Enrollment successful")
                     }
 
                     override fun failure(throwable: Throwable) {
+                        Timber.e("Enrollment failed: " + throwable.localizedMessage)
                         showErrorAlert("SDK Unlock", throwable)
                     }
                 })
@@ -204,6 +219,7 @@ abstract class FragmentSDKOperations : Fragment() {
                     }
 
                     override fun failure(t: Throwable) {
+                        Timber.e(t)
                         showErrorAlert("SDK Unlock", t)
                     }
                 })
@@ -216,6 +232,7 @@ abstract class FragmentSDKOperations : Fragment() {
             val extras: Array<ApproveInfo>? = try {
                 FuturaeClient.getExtraInfoFromOfflineQrcode(qrCode)
             } catch (e: MalformedQRCodeException) {
+                Timber.e(e)
                 showErrorAlert("SDK Unlock", e)
                 return
             }
@@ -230,6 +247,7 @@ abstract class FragmentSDKOperations : Fragment() {
                 val verificationSignature = try {
                     FuturaeSDK.INSTANCE.getClient().computeVerificationCodeFromQrcode(qrCode)
                 } catch (e: Exception) {
+                    Timber.e(e)
                     showErrorAlert("SDK Unlock", e)
                     return@showDialog
                 }

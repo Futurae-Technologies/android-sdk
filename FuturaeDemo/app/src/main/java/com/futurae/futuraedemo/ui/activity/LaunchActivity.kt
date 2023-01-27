@@ -15,6 +15,7 @@ import com.futurae.futuraedemo.databinding.ActivityLauncherBinding
 import com.futurae.futuraedemo.ui.App
 import com.futurae.futuraedemo.ui.showAlert
 import com.futurae.futuraedemo.ui.showDialog
+import com.futurae.futuraedemo.ui.showErrorAlert
 import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.LockConfigurationType
 import timber.log.Timber
@@ -26,6 +27,8 @@ class LaunchActivity : ComponentActivity() {
     companion object {
         const val DURATION_UNLOCK_SECONDS = 60
     }
+
+    private var lockConfigurationType: LockConfigurationType? = null
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -61,20 +64,51 @@ class LaunchActivity : ComponentActivity() {
         binding.buttonReset.setOnClickListener {
             FuturaeSDK.INSTANCE.reset(this)
         }
+        checkForFTUri(intent)
     }
 
-    private fun startHomeActivityWithConfig(type: LockConfigurationType) {
+    private fun checkForFTUri(intent: Intent?) {
+        intent?.dataString?.takeIf { it.isNotBlank() }?.let { uri ->
+            lockConfigurationType?.let { type ->
+                startActivity(HomeActivity.newIntent(this, type, uri))
+            } ?: showErrorAlert("URI Alert", IllegalStateException("Unable to handle URI before initializing SDK with a lock configuration."))
+        } ?: Timber.d("No URI found in provided Intent")
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        checkForFTUri(intent)
+    }
+
+    private fun startHomeActivityWithConfig(type: LockConfigurationType, uri: String? = null) {
+        if (lockConfigurationType != null && lockConfigurationType != type) {
+            showErrorAlert(
+                "App Error",
+                IllegalStateException("SDK Already initialized with lock configuration type: ${lockConfigurationType}")
+            )
+            return
+        }
+        lockConfigurationType = type
+        startHomeActivity(type, uri)
+    }
+
+    private fun startHomeActivity(type: LockConfigurationType, uri: String? = null) {
         try {
             (application as App).launchFuturaeSDKWithConfig(
                 type,
                 DURATION_UNLOCK_SECONDS
             )
             startActivity(
-                HomeActivity.newIntent(
-                    this, type, intent.dataString
-                )
+                HomeActivity.newIntent(this, type, uri)
+            )
+        } catch (e: IllegalStateException) {
+            Timber.w("SDK is already initialized.", e)
+            startActivity(
+                HomeActivity.newIntent(this, type, uri)
             )
         } catch (e: Exception) {
+            // SDK initialization error. Handle
+            Timber.e(e)
             showDialog(
                 "SDK Initialization",
                 "Error:\n" + e.localizedMessage,

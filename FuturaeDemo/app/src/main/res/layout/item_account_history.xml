@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/typeLabelText"
+        style="@style/TextAppearance.AppCompat.Body1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Type:"
+        android:textStyle="bold"
+        app:layout_constraintHorizontal_chainStyle="packed"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/typeValueText"
+        style="@style/TextAppearance.AppCompat.Body1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="@id/typeLabelText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/typeLabelText"
+        app:layout_constraintTop_toTopOf="@id/typeLabelText"
+        tools:text="Transaction 3DS" />
+
+    <TextView
+        android:id="@+id/statusLabelText"
+        style="@style/TextAppearance.AppCompat.Body1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:text="Success:"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/typeLabelText" />
+
+    <TextView
+        android:id="@+id/statusValueText"
+        style="@style/TextAppearance.AppCompat.Body1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="@id/statusLabelText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/statusLabelText"
+        app:layout_constraintTop_toTopOf="@id/statusLabelText"
+        tools:text="true" />
+
+    <TextView
+        android:id="@+id/dateLabelText"
+        style="@style/TextAppearance.AppCompat.Body1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:text="Date:"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/statusLabelText" />
+
+    <TextView
+        android:id="@+id/dateValueText"
+        style="@style/TextAppearance.AppCompat.Body1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="@id/dateLabelText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/dateLabelText"
+        app:layout_constraintTop_toTopOf="@id/dateLabelText"
+        tools:text="@tools:sample/date/hhmmss" />
+
+    <TextView
+        android:id="@+id/resultLabelText"
+        style="@style/TextAppearance.AppCompat.Body1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Result:"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/dateLabelText" />
+
+    <TextView
+        android:id="@+id/resultValueText"
+        style="@style/TextAppearance.AppCompat.Body1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="@id/resultLabelText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/resultLabelText"
+        app:layout_constraintTop_toTopOf="@id/resultLabelText"
+        tools:text="Allow" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

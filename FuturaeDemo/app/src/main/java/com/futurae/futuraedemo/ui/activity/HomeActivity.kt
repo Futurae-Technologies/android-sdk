@@ -74,12 +74,4 @@ class HomeActivity : FuturaeActivity() {
             { rejectAuth(session) })
     }
 
-    override fun onReceivedUri(callback: () -> Unit) {
-        if (FuturaeSDK.INSTANCE.getClient().isLocked) {
-            //unlock with preferred method and upon success invoke callback()
-        }  else {
-            callback()
-        }
-    }
-
 }

@@ -39,5 +39,8 @@ class FragmentSDKUnlockNone : FragmentSDKOperations() {
         binding.buttonMigrationExecute.setOnClickListener {
             onAccountsMigrationExecute()
         }
+        binding.buttonAccHistory.setOnClickListener {
+            getAccountHistory()
+        }
     }
 }
