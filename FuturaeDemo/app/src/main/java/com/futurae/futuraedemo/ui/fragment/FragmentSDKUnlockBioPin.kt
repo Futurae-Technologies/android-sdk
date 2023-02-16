@@ -327,9 +327,6 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                 FTRQRCodeActivity.getIntent(requireContext(), true, false),
             )
         }
-        binding.buttonAccHistory.setOnClickListener {
-            getAccountHistory()
-        }
         binding.buttonActivateBiometrics.setOnClickListener {
             FuturaeSDK.INSTANCE.getClient().activateBiometrics(
                 requireActivity(),
@@ -420,6 +417,15 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
             getQRCodeCallback.launch(
                 FTRQRCodeActivity.getIntent(requireContext(), true, false),
             )
+        }
+        binding.buttonAccStatus.setOnClickListener {
+            getAccountsStatus()
+        }
+        binding.buttonAccHistory.setOnClickListener {
+            getAccountHistory()
+        }
+        binding.buttonSyncAuthentication.setOnClickListener {
+            onSyncAuthToken()
         }
     }
 

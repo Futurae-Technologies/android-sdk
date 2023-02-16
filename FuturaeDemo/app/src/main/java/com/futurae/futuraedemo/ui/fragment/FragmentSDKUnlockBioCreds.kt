@@ -68,6 +68,15 @@ class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
         binding.buttonMigrationExecute.setOnClickListener {
             onAccountsMigrationExecute()
         }
+        binding.buttonAccHistory.setOnClickListener {
+            getAccountHistory()
+        }
+        binding.buttonSyncAuthentication.setOnClickListener {
+            onSyncAuthToken()
+        }
+        binding.buttonAccStatus.setOnClickListener {
+            getAccountsStatus()
+        }
         binding.unlockMethodsValue.text = FuturaeSDK.INSTANCE.getClient().activeUnlockMethods.joinToString()
     }
 }

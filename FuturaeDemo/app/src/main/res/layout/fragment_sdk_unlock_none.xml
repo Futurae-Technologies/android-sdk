@@ -71,6 +71,22 @@
 			android:layout_gravity="center"
 			android:text="Account History" />
 
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/buttonSyncAuthentication"
+			style="@style/AppTheme.Button"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center"
+			android:text="Sync Auth Token" />
+
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/buttonAccStatus"
+			style="@style/AppTheme.Button"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center"
+			android:text="Account Status" />
+
 	</LinearLayout>
 
 

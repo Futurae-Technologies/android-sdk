@@ -42,5 +42,11 @@ class FragmentSDKUnlockNone : FragmentSDKOperations() {
         binding.buttonAccHistory.setOnClickListener {
             getAccountHistory()
         }
+        binding.buttonSyncAuthentication.setOnClickListener {
+            onSyncAuthToken()
+        }
+        binding.buttonAccStatus.setOnClickListener {
+            getAccountsStatus()
+        }
     }
 }

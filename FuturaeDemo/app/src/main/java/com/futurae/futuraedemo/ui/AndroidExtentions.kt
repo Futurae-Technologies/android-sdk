@@ -18,12 +18,12 @@ fun Context.showDialog(
     val builder = AlertDialog.Builder(this)
         .setTitle(title)
         .setMessage(message)
-        .setPositiveButton(positiveButton) { dialog, which ->
+        .setPositiveButton(positiveButton) { dialog, _ ->
             positiveButtonCallback.invoke()
             dialog.dismiss()
         }
     if (negativeButton != null && negativeButtonCallback != null) {
-        builder.setNegativeButton(negativeButton) { dialog, which ->
+        builder.setNegativeButton(negativeButton) { dialog, _ ->
             negativeButtonCallback.invoke()
             dialog.dismiss()
         }
@@ -40,7 +40,7 @@ fun Context.showAlert(
     AlertDialog.Builder(this)
         .setTitle(title)
         .setMessage(message)
-        .setPositiveButton("ok") { dialog, which ->
+        .setPositiveButton("ok") { dialog, _ ->
             dialog.dismiss()
         }
         .create()
