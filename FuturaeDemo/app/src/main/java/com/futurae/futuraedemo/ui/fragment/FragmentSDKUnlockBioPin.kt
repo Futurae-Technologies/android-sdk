@@ -330,6 +330,9 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
         binding.buttonAccHistory.setOnClickListener {
             getAccountHistory()
         }
+        binding.buttonSyncAuthentication.setOnClickListener {
+            onSyncAuthToken()
+        }
         binding.buttonActivateBiometrics.setOnClickListener {
             FuturaeSDK.INSTANCE.getClient().activateBiometrics(
                 requireActivity(),

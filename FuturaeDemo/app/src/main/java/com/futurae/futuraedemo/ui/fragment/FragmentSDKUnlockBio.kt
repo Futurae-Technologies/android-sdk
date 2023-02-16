@@ -74,6 +74,9 @@ class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
         binding.buttonAccHistory.setOnClickListener {
             getAccountHistory()
         }
+        binding.buttonSyncAuthentication.setOnClickListener {
+            onSyncAuthToken()
+        }
         binding.unlockMethodsValue.text = FuturaeSDK.INSTANCE.getClient().activeUnlockMethods.joinToString()
     }
 }

@@ -1,10 +1,13 @@
 package com.futurae.futuraedemo.ui.fragment
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.futurae.futuraedemo.ui.activity.ActivityAccountHistory
 import com.futurae.futuraedemo.ui.activity.FTRQRCodeActivity
@@ -40,6 +43,29 @@ abstract class FragmentSDKOperations : Fragment() {
         FuturaeSDK.INSTANCE.getClient().accounts.firstOrNull()?.let {
             startActivity(Intent(requireContext(), ActivityAccountHistory::class.java))
         } ?: Toast.makeText(requireContext(), "No account enrolled", Toast.LENGTH_SHORT).show()
+    }
+
+    protected fun onSyncAuthToken() {
+        val accounts = FuturaeSDK.INSTANCE.getClient().accounts
+        if (accounts == null || accounts.size == 0) {
+            showAlert("Error", "No account enrolled")
+            return
+        }
+        val account = accounts[0]
+        try {
+            val hotp = FuturaeSDK.INSTANCE.getClient().getSynchronousAuthToken(account.userId)
+            showDialog(
+                "TOTP",
+                "HOTP JWT: ${hotp}\n",
+                "OK", {
+                    val clipboardMgr = ContextCompat.getSystemService(requireContext(), ClipboardManager::class.java)
+                    val clip = ClipData.newPlainText("HOTP JWT", hotp)
+                    clipboardMgr?.setPrimaryClip(clip)
+                }
+            )
+        } catch (e: LockOperationIsLockedException) {
+            showErrorAlert("SDK Unlock", e)
+        }
     }
 
     protected fun scanQRCode() {
