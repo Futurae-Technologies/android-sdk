@@ -10,9 +10,9 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.futurae.futuraedemo.databinding.ActivityHistoryBinding
 import com.futurae.futuraedemo.databinding.ItemAccountHistoryBinding
-import com.futurae.futuraedemo.ui.showDialog
-import com.futurae.futuraedemo.ui.showErrorAlert
-import com.futurae.futuraedemo.ui.toDialogMessage
+import com.futurae.futuraedemo.util.showDialog
+import com.futurae.futuraedemo.util.showErrorAlert
+import com.futurae.futuraedemo.util.toDialogMessage
 import com.futurae.sdk.Callback
 import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.approve.ApproveSession
@@ -59,6 +59,14 @@ class ActivityAccountHistory : FuturaeActivity() {
             })
         }
 
+    }
+
+    override fun showLoading() {
+        //no-op
+    }
+
+    override fun hideLoading() {
+        //no-op
     }
 
     override fun onApproveAuth(session: ApproveSession, hasExtraInfo: Boolean) {

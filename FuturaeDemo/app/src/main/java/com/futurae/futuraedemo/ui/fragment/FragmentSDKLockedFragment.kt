@@ -2,7 +2,6 @@ package com.futurae.futuraedemo.ui.fragment
 
 import android.os.CountDownTimer
 import android.widget.TextView
-import com.futurae.futuraedemo.ui.activity.LaunchActivity
 
 abstract class FragmentSDKLockedFragment : FragmentSDKOperations() {
 
@@ -12,7 +11,7 @@ abstract class FragmentSDKLockedFragment : FragmentSDKOperations() {
         statusView.text = "Unlocked"
         unlockTimer?.cancel()
         unlockTimer =
-            object : CountDownTimer(LaunchActivity.DURATION_UNLOCK_SECONDS * 1000L, 500L) {
+            object : CountDownTimer(localStorage.getPersistedSDKConfig().unlockDuration * 1000L, 500L) {
                 override fun onTick(millisUntilFinished: Long) {
                     timeLeftView.text = "${millisUntilFinished / 1000} sec"
                 }

@@ -1,1 +1,12 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+        jcenter()
+    }
+}
+
+rootProject.name = 'futurae-android-sdk-sample'
+
 include ':app'

@@ -4,26 +4,31 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.os.Bundle
+import android.view.View
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.fragment.app.Fragment
+import com.bumptech.glide.Glide
+import com.futurae.futuraedemo.R
 import com.futurae.futuraedemo.ui.activity.ActivityAccountHistory
 import com.futurae.futuraedemo.ui.activity.FTRQRCodeActivity
-import com.futurae.futuraedemo.ui.showAlert
-import com.futurae.futuraedemo.ui.showDialog
-import com.futurae.futuraedemo.ui.showErrorAlert
-import com.futurae.futuraedemo.ui.toDialogMessage
+import com.futurae.futuraedemo.ui.activity.FuturaeActivity
+import com.futurae.futuraedemo.util.showAlert
+import com.futurae.futuraedemo.util.showDialog
+import com.futurae.futuraedemo.util.showErrorAlert
+import com.futurae.futuraedemo.util.toDialogMessage
+import com.futurae.futuraedemo.util.LocalStorage
 import com.futurae.sdk.*
-import com.futurae.sdk.FuturaeResultCallback
 import com.futurae.sdk.approve.ApproveSession
 import com.futurae.sdk.exception.LockOperationIsLockedException
-import com.futurae.sdk.model.AccountsMigrationResource.MigrationAccount
-import com.futurae.sdk.model.AccountsStatus
-import com.futurae.sdk.model.ApproveInfo
-import com.futurae.sdk.model.SessionInfo
+import com.futurae.sdk.model.*
 import com.google.android.gms.vision.barcode.Barcode
+import com.google.android.material.button.MaterialButton
 import timber.log.Timber
 
 /**
@@ -32,6 +37,11 @@ import timber.log.Timber
  */
 abstract class FragmentSDKOperations : Fragment() {
 
+    abstract fun serviceLogoButton(): MaterialButton
+
+    protected val localStorage: LocalStorage by lazy {
+        LocalStorage(requireContext())
+    }
     private val getQRCodeCallback =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
             if (result.resultCode == Activity.RESULT_OK) {
@@ -41,19 +51,45 @@ abstract class FragmentSDKOperations : Fragment() {
             }
         }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        serviceLogoButton().setOnClickListener {
+            val ftAccounts = FuturaeSDK.INSTANCE.client.accounts
+            if (ftAccounts.isNotEmpty()) {
+                val ftAccount = ftAccounts.first()
+                val dialogView = layoutInflater.inflate(R.layout.dialog_service_logo, null)
+                val imageView = dialogView.findViewById<ImageView>(R.id.logoImage)
+                Glide.with(this).load(ftAccount.serviceLogo).placeholder(R.drawable.ic_settings).into(imageView)
+                val dialog =
+                    AlertDialog.Builder(requireContext(), com.google.android.material.R.style.Theme_Material3_Light_Dialog).setTitle("Service Logo")
+                        .setView(dialogView).setPositiveButton("OK") { dialog, _ ->
+                            dialog.dismiss()
+                        }.create()
+                dialog.show()
+            } else {
+                Toast.makeText(requireContext(), "No account enrolled", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+    }
+
     protected fun getAccountHistory() {
-        FuturaeSDK.INSTANCE.getClient().accounts.firstOrNull()?.let {
+        FuturaeSDK.INSTANCE.client.accounts.firstOrNull()?.let {
             startActivity(Intent(requireContext(), ActivityAccountHistory::class.java))
         } ?: Toast.makeText(requireContext(), "No account enrolled", Toast.LENGTH_SHORT).show()
     }
 
     protected fun getAccountsStatus() {
-        FuturaeSDK.INSTANCE.getClient().accounts.takeIf { it.isNotEmpty() }?.let { accounts ->
-            FuturaeSDK.INSTANCE.getClient().getAccountsStatus(
-                accounts.map { it.userId },
+        FuturaeSDK.INSTANCE.client.accounts.takeIf { it.isNotEmpty() }?.let { accounts ->
+            FuturaeSDK.INSTANCE.client.getAccountsStatus(accounts.map { it.userId },
                 object : FuturaeResultCallback<AccountsStatus> {
                     override fun success(p0: AccountsStatus) {
                         Toast.makeText(requireContext(), "Acc status success", Toast.LENGTH_SHORT).show()
+                        val sessionInfos = p0.statuses.first().sessionInfos
+                        if (sessionInfos.isNotEmpty()) {
+                            val session = ApproveSession(sessionInfos.first())
+                            (activity as FuturaeActivity).onApproveAuth(session, session.hasExtraInfo())
+                        }
                     }
 
                     override fun failure(t: Throwable) {
@@ -63,28 +99,6 @@ abstract class FragmentSDKOperations : Fragment() {
         } ?: Toast.makeText(requireContext(), "No accounts enrolled", Toast.LENGTH_SHORT).show()
     }
 
-    protected fun onSyncAuthToken() {
-        val accounts = FuturaeSDK.INSTANCE.getClient().accounts
-        if (accounts == null || accounts.size == 0) {
-            showAlert("Error", "No account enrolled")
-            return
-        }
-        val account = accounts[0]
-        try {
-            val hotp = FuturaeSDK.INSTANCE.getClient().getSynchronousAuthToken(account.userId)
-            showDialog(
-                "TOTP",
-                "HOTP JWT: ${hotp}\n",
-                "OK", {
-                    val clipboardMgr = ContextCompat.getSystemService(requireContext(), ClipboardManager::class.java)
-                    val clip = ClipData.newPlainText("HOTP JWT", hotp)
-                    clipboardMgr?.setPrimaryClip(clip)
-                }
-            )
-        } catch (e: LockOperationIsLockedException) {
-            showErrorAlert("SDK Unlock", e)
-        }
-    }
 
     protected fun scanQRCode() {
         getQRCodeCallback.launch(
@@ -94,113 +108,157 @@ abstract class FragmentSDKOperations : Fragment() {
 
     protected fun onLogout() {
         // For demo purposes, we simply logout the first account we can find
-        val accounts = FuturaeSDK.INSTANCE.getClient().accounts
+        val accounts = FuturaeSDK.INSTANCE.client.accounts
         if (accounts == null || accounts.size == 0) {
             showAlert("Error", "No account to logout")
             return
         }
         val account = accounts[0]
-        FuturaeSDK.INSTANCE.getClient().logout(account.userId,
-            object : FuturaeCallback {
-                override fun success() {
-                    showAlert("Success", "Logged out " + account.username)
-                }
+        FuturaeSDK.INSTANCE.client.logout(account.userId, object : FuturaeCallback {
+            override fun success() {
+                showAlert("Success", "Logged out " + account.username)
+            }
 
-                override fun failure(throwable: Throwable) {
-                    showErrorAlert("SDK Unlock", throwable)
-                }
-            })
+            override fun failure(throwable: Throwable) {
+                showErrorAlert("SDK Unlock", throwable)
+            }
+        })
     }
 
     protected fun onTOTPAuth() {
-        val accounts = FuturaeSDK.INSTANCE.getClient().accounts
+        val accounts = FuturaeSDK.INSTANCE.client.accounts
         if (accounts == null || accounts.size == 0) {
             showAlert("Error", "No account enrolled")
             return
         }
         val account = accounts[0]
         try {
-            val totp = FuturaeSDK.INSTANCE.getClient().nextTotp(account.userId)
+            val totp = FuturaeSDK.INSTANCE.client.nextTotp(account.userId)
             showAlert(
-                "TOTP",
-                "Code: ${totp.getPasscode()}\nRemaining seconds: ${totp.getRemainingSecs()}"
+                "TOTP", "Code: ${totp.getPasscode()}\nRemaining seconds: ${totp.getRemainingSecs()}"
             )
         } catch (e: LockOperationIsLockedException) {
             Timber.e(e)
             showErrorAlert("SDK Unlock", e)
         }
-
     }
 
-    protected fun onAccountsMigrationCheck() {
-        FuturaeSDK.INSTANCE.getClient().checkAccountMigrationPossible(
-            object : FuturaeResultCallback<Int> {
-                override fun success(numAccounts: Int) {
-                    if (numAccounts > 0) {
-                        Timber.i("Accounts Migration is possible. Number of accounts that can be migrated: $numAccounts")
-                        showAlert(
-                            "Success",
-                            "Accounts Migration is possible.\nNumber of accounts that can be migrated: $numAccounts"
-                        )
-                    } else {
-                        Timber.i("Accounts Migration is not possible. There were no accounts found that can be migrated.")
-                        showAlert(
-                            "Info",
-                            "Accounts Migration is not possible\nNo accounts found that can be migrated"
-                        )
-                    }
-                }
-
-                override fun failure(throwable: Throwable) {
-                    Timber.e(throwable)
-                    showErrorAlert("SDK Unlock", throwable)
-                }
+    protected fun onHotpAuth() {
+        val accounts = FuturaeSDK.INSTANCE.client.accounts
+        if (accounts == null || accounts.size == 0) {
+            showAlert("Error", "No account enrolled")
+            return
+        }
+        val account = accounts[0]
+        try {
+            val hotp = FuturaeSDK.INSTANCE.client.getSynchronousAuthToken(account.userId)
+            showDialog("TOTP", "HOTP JWT: ${hotp}\n", "OK", {
+                Timber.e("JWT: ${hotp}")
+                val clipboardMgr = getSystemService(requireContext(), ClipboardManager::class.java)
+                val clip = ClipData.newPlainText("HOTP JWT", hotp)
+                clipboardMgr?.setPrimaryClip(clip)
             })
+        } catch (e: LockOperationIsLockedException) {
+            Timber.e(e)
+            showErrorAlert("SDK Unlock", e)
+        }
     }
 
-
-    protected fun onAccountsMigrationExecute() {
-        FuturaeSDK.INSTANCE.getClient().executeAccountMigration(
-            object : FuturaeResultCallback<Array<MigrationAccount>> {
-                override fun success(result: Array<MigrationAccount>) {
-                    val userIdsMigrated = StringBuilder()
-                    for (i in result.indices) {
-                        if (i > 0) {
-                            userIdsMigrated.append("\n")
-                        }
-                        userIdsMigrated.append(result[i].username)
-                    }
-                    Timber.i("Accounts migration successful. Accounts migrated (total: " + result.size + "): " + userIdsMigrated)
+    protected fun attemptRestoreAccounts() {
+        FuturaeSDK.INSTANCE.client.checkForMigratableAccounts(object : Callback<MigrateableAccounts> {
+            override fun onSuccess(result: MigrateableAccounts) {
+                if (result.numAccounts > 0) {
+                    showDialog(
+                        "SDK Account Migration",
+                        "Restoring Accounts possible for:\n ${result.numAccounts} accounts."
+                                + "\n Requires PIN: ${result.pinProtected}"
+                                + "\n Account names: \n ${result.migratableAccountInfos.joinToString { acc -> acc.username + ",\n" }}",
+                        "Proceed",
+                        {
+                            if (result.pinProtected
+                                || localStorage.getPersistedSDKConfig().lockConfigurationType == LockConfigurationType.SDK_PIN_WITH_BIOMETRICS_OPTIONAL
+                            ) {
+                                onAccountsMigrationWithSDKPINExecute()
+                            } else {
+                                onAccountsMigrationExecute()
+                            }
+                        },
+                        "cancel",
+                    )
+                } else {
                     showAlert(
-                        "Accounts migration successful",
-                        """Accounts migrated (total: ${result.size}):$userIdsMigrated""".trimIndent()
+                        "SDK Account Migration",
+                        "No migratable accounts found"
                     )
                 }
-
-                override fun failure(throwable: Throwable) {
-                    Timber.e(throwable.localizedMessage)
-                    showErrorAlert("SDK Unlock", throwable)
-                }
             }
-        )
+
+            override fun onError(throwable: Throwable) {
+                Timber.e(throwable)
+                showErrorAlert("SDK Unlock", throwable)
+            }
+        })
+    }
+
+
+    private fun onAccountsMigrationExecute() {
+        FuturaeSDK.INSTANCE.client.executeAccountMigration(object :
+            FuturaeResultCallback<Array<AccountsMigrationResource.MigrationAccount>> {
+            override fun success(result: Array<AccountsMigrationResource.MigrationAccount>) {
+                val userIdsMigrated = StringBuilder()
+                for (i in result.indices) {
+                    if (i > 0) {
+                        userIdsMigrated.append("\n")
+                    }
+                    userIdsMigrated.append(result[i].username)
+                }
+                Timber.i("Accounts migration successful. Accounts migrated (total: " + result.size + "): " + userIdsMigrated)
+                showAlert(
+                    "Accounts migration successful",
+                    """Accounts migrated (total: ${result.size}):$userIdsMigrated""".trimIndent()
+                )
+            }
+
+            override fun failure(throwable: Throwable) {
+                Timber.e(throwable.localizedMessage)
+                showErrorAlert("SDK Unlock", throwable)
+            }
+        })
+    }
+
+    private fun onAccountsMigrationWithSDKPINExecute() {
+        getPinWithCallback {
+            FuturaeSDK.INSTANCE.client.executeAccountMigrationWithSDKPin(it,
+                object : Callback<List<AccountsMigrationResource.MigrationAccount>> {
+                    override fun onSuccess(result: List<AccountsMigrationResource.MigrationAccount>) {
+                        showAlert(
+                            "Accounts migration successful",
+                            "Accounts migrated (total: ${result.size}): \n ${result.joinToString { acc -> acc.username + ",\n" }}".trimIndent()
+                        )
+                    }
+
+                    override fun onError(throwable: Throwable) {
+                        Timber.e(throwable.localizedMessage)
+                        showErrorAlert("SDK Unlock", throwable)
+                    }
+                })
+        }
     }
 
     // QRCode callbacks
     private fun onEnrollQRCodeScanned(data: Intent) {
         (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
-            FuturaeSDK.INSTANCE.getClient().enroll(
-                qrcode.rawValue,
-                object : FuturaeCallback {
-                    override fun success() {
-                        Timber.i("Enrollment successful")
-                        showAlert("Success", "Enrollment successful")
-                    }
+            FuturaeSDK.INSTANCE.client.enroll(qrcode.rawValue, object : FuturaeCallback {
+                override fun success() {
+                    Timber.i("Enrollment successful")
+                    showAlert("Success", "Enrollment successful")
+                }
 
-                    override fun failure(throwable: Throwable) {
-                        Timber.e("Enrollment failed: " + throwable.localizedMessage)
-                        showErrorAlert("SDK Unlock", throwable)
-                    }
-                })
+                override fun failure(throwable: Throwable) {
+                    Timber.e("Enrollment failed: " + throwable.localizedMessage)
+                    showErrorAlert("SDK Unlock", throwable)
+                }
+            })
         }
     }
 
@@ -215,23 +273,31 @@ abstract class FragmentSDKOperations : Fragment() {
                 e.printStackTrace()
                 return
             }
-            FuturaeSDK.INSTANCE.getClient().sessionInfoByToken(userId, sessionToken,
+
+            FuturaeSDK.INSTANCE.client.sessionInfoByToken(
+                userId,
+                sessionToken,
                 object : FuturaeResultCallback<SessionInfo?> {
                     override fun success(sessionInfo: SessionInfo?) {
+                        if (sessionInfo == null) {
+                            showDialog(
+                                "Something went wrong",
+                                "Please try again",
+                                "Ok",
+                                { })
+                            return
+                        }
+
                         val session = ApproveSession(sessionInfo)
-                        showDialog(
-                            "approve",
+                        showDialog("approve",
                             "Would you like to approve the request?${session.toDialogMessage()}",
                             "Approve",
                             {
-                                FuturaeSDK.INSTANCE.getClient().approveAuth(
-                                    session.userId,
-                                    session.sessionId, object : FuturaeCallback {
+                                FuturaeSDK.INSTANCE.client.approveAuth(
+                                    session.userId, session.sessionId, object : FuturaeCallback {
                                         override fun success() {
                                             Toast.makeText(
-                                                requireContext(),
-                                                "Approved",
-                                                Toast.LENGTH_SHORT
+                                                requireContext(), "Approved", Toast.LENGTH_SHORT
                                             ).show()
                                         }
 
@@ -243,14 +309,11 @@ abstract class FragmentSDKOperations : Fragment() {
                             },
                             "Deny",
                             {
-                                FuturaeSDK.INSTANCE.getClient().rejectAuth(
-                                    session.userId,
-                                    session.sessionId, false, object : FuturaeCallback {
+                                FuturaeSDK.INSTANCE.client.rejectAuth(
+                                    session.userId, session.sessionId, false, object : FuturaeCallback {
                                         override fun success() {
                                             Toast.makeText(
-                                                requireContext(),
-                                                "Denied",
-                                                Toast.LENGTH_SHORT
+                                                requireContext(), "Denied", Toast.LENGTH_SHORT
                                             ).show()
                                         }
 
@@ -289,15 +352,14 @@ abstract class FragmentSDKOperations : Fragment() {
             }
             showDialog("Approve", "Request Info: ${sb}", "Approve", {
                 val verificationSignature = try {
-                    FuturaeSDK.INSTANCE.getClient().computeVerificationCodeFromQrcode(qrCode)
+                    FuturaeSDK.INSTANCE.client.computeVerificationCodeFromQrcode(qrCode)
                 } catch (e: Exception) {
                     Timber.e(e)
                     showErrorAlert("SDK Unlock", e)
                     return@showDialog
                 }
                 showAlert(
-                    "Confirm Transaction",
-                    "To Approve the transaction, enter: $verificationSignature in the browser"
+                    "Confirm Transaction", "To Approve the transaction, enter: $verificationSignature in the browser"
                 )
             }, " Deny", {
                 //Nothing
@@ -313,5 +375,17 @@ abstract class FragmentSDKOperations : Fragment() {
                 FuturaeClient.QR_OFFLINE -> onOfflineAuthQRCodeScanned(data)
             }
         }
+    }
+
+    protected fun getPinWithCallback(callback: (CharArray) -> Unit) {
+        val pinFragment = FragmentPin()
+        parentFragmentManager.beginTransaction().add(R.id.pinFragmentContainer, pinFragment.apply {
+            listener = object : FragmentPin.Listener {
+                override fun onPinComplete(pin: CharArray) {
+                    parentFragmentManager.beginTransaction().remove(pinFragment).commit()
+                    callback(pin)
+                }
+            }
+        }).commit()
     }
 }

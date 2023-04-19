@@ -1,4 +1,4 @@
-package com.futurae.futuraedemo.ui
+package com.futurae.futuraedemo.util
 
 import android.app.Activity
 import android.content.Context
@@ -57,7 +57,7 @@ fun Fragment.showAlert(
 
 fun Fragment.showErrorAlert(
     title: String,
-    throwable : Throwable
+    throwable: Throwable
 ) {
     Timber.e(throwable)
     requireContext().showAlert(title, "Error:\n${throwable.localizedMessage}")
@@ -65,8 +65,9 @@ fun Fragment.showErrorAlert(
 
 fun Activity.showErrorAlert(
     title: String,
-    throwable : Throwable
+    throwable: Throwable
 ) {
+    Timber.e(throwable)
     showAlert(title, "Error:\n${throwable.localizedMessage}")
 }
 
@@ -88,14 +89,10 @@ fun Fragment.showDialog(
     )
 }
 
-
-fun ApproveSession.toDialogMessage(): String {
-    val sb = StringBuffer()
-    if (info != null) {
-        sb.append("\n")
-        for (info in info) {
-            sb.append(info.key).append(": ").append(info.value).append("\n")
-        }
-    }
-    return sb.toString()
+fun ApproveSession.toDialogMessage() = buildString {
+    append("\n")
+    append(info?.joinToString(separator = "\n") {
+        "${it.key}: ${it.value}"
+    } ?: "")
+    append("\nTimeout: $sessionTimeout")
 }

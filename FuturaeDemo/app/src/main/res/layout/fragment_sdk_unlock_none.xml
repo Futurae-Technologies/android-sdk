@@ -1,93 +1,120 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:app="http://schemas.android.com/apk/res-auto"
-	android:layout_width="match_parent"
-	android:layout_height="match_parent"
-	android:orientation="vertical">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-	<LinearLayout
-		android:layout_width="0dp"
-		android:layout_height="0dp"
-		android:orientation="vertical"
-		android:padding="24dp"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintEnd_toEndOf="parent"
-		app:layout_constraintStart_toStartOf="parent"
-		app:layout_constraintTop_toTopOf="parent">
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
-		<com.google.android.material.button.MaterialButton
-			android:id="@+id/buttonEnroll"
-			style="@style/AppTheme.Button"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:text="Enroll" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0">
 
-		<com.google.android.material.button.MaterialButton
-			android:id="@+id/buttonTotp"
-			style="@style/AppTheme.Button"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:text="TOTP" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonEnroll"
+                style="@style/AppTheme.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="Enroll" />
 
-		<com.google.android.material.button.MaterialButton
-			android:id="@+id/buttonQRCode"
-			style="@style/AppTheme.Button"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:text="Scan QR code" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonTotp"
+                style="@style/AppTheme.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="TOTP" />
 
-		<com.google.android.material.button.MaterialButton
-			android:id="@+id/buttonLogout"
-			style="@style/AppTheme.Button"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:text="Logout" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonQRCode"
+                style="@style/AppTheme.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="Scan QR code" />
 
-		<com.google.android.material.button.MaterialButton
-			android:id="@+id/buttonMigrationCheck"
-			style="@style/AppTheme.Button"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:text="Check for Acc migration" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonMigrationExecute"
+                style="@style/AppTheme.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="Attempt Account Migration " />
 
-		<com.google.android.material.button.MaterialButton
-			android:id="@+id/buttonMigrationExecute"
-			style="@style/AppTheme.Button"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:text="Execute Acc migration" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonAccHistory"
+                style="@style/AppTheme.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="Account History" />
 
-		<com.google.android.material.button.MaterialButton
-			android:id="@+id/buttonAccHistory"
-			style="@style/AppTheme.Button"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:text="Account History" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonHotp"
+                style="@style/AppTheme.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="Sync Auth token" />
 
-		<com.google.android.material.button.MaterialButton
-			android:id="@+id/buttonSyncAuthentication"
-			style="@style/AppTheme.Button"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:text="Sync Auth Token" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonAccStatus"
+                style="@style/AppTheme.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="Accounts Status" />
 
-		<com.google.android.material.button.MaterialButton
-			android:id="@+id/buttonAccStatus"
-			style="@style/AppTheme.Button"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:text="Account Status" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonServiceLogo"
+                style="@style/AppTheme.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="Service Logo" />
 
-	</LinearLayout>
+        </LinearLayout>
+
+    </ScrollView>
+
+    <FrameLayout
+        android:id="@+id/pinFragmentContainer"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="@style/Widget.Material3.CircularProgressIndicator.Medium"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

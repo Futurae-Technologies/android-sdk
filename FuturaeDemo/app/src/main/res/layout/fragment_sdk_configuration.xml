@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="20dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/textSDKLockConfigTitle"
+            style="@style/TextAppearance.AppCompat.SearchResult.Subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Configure SDK lock configuration"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <RadioGroup
+            android:id="@+id/radioGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:checkedButton="@id/radioButtonNone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textSDKLockConfigTitle">
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioButtonNone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="NONE" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioButtonBiometrics"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BIOMETRICS ONLY" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioButtonBiometricsOrCreds"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BIOMETRICS OR DEVICE CREDENTIALS" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioButtonPin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SKD PIN WITH BIOMETRICS OPTIONAL" />
+
+        </RadioGroup>
+
+        <TextView
+            android:id="@+id/textSDKUnlockDuration"
+            style="@style/TextAppearance.AppCompat.SearchResult.Subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Configure SDK unlock duration"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/radioGroup" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroup"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            app:checkedChip="@+id/chip60"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textSDKUnlockDuration"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip30"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="30s"
+                app:chipBackgroundColor="@color/bg_selector_checked" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip60"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="60s"
+                app:chipBackgroundColor="@color/bg_selector_checked" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip120"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="120s"
+                app:chipBackgroundColor="@color/bg_selector_checked" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip180"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="180s"
+                app:chipBackgroundColor="@color/bg_selector_checked" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip240"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="240s"
+                app:chipBackgroundColor="@color/bg_selector_checked" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip300"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="300s"
+                app:chipBackgroundColor="@color/bg_selector_checked" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+
+        <TextView
+            android:id="@+id/textSDKBioInvalidation"
+            style="@style/TextAppearance.AppCompat.SearchResult.Subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Configure SDK biometric invalidation"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/chipGroup" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/checkboxBioInvalidation"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Enable Biometic Invalidation"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textSDKBioInvalidation"
+            />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/finishButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Finish"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/checkboxBioInvalidation" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

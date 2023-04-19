@@ -5,10 +5,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.futurae.futuraedemo.databinding.FragmentSdkUnlockBioCredsBinding
-import com.futurae.futuraedemo.ui.showErrorAlert
+import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.sdk.Callback
 import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.model.UserPresenceVerification
+import com.google.android.material.button.MaterialButton
 import timber.log.Timber
 
 class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
@@ -27,7 +28,7 @@ class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.buttonUnlock.setOnClickListener {
-            FuturaeSDK.INSTANCE.getClient().unlockWithBiometricsDeviceCredentials(
+            FuturaeSDK.INSTANCE.client.unlockWithBiometricsDeviceCredentials(
                 requireActivity(),
                 "Unlock SDK",
                 "Authenticate with biometrics or device credentials",
@@ -47,14 +48,11 @@ class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
             )
         }
         binding.buttonLock.setOnClickListener {
-            FuturaeSDK.INSTANCE.getClient().lock()
+            FuturaeSDK.INSTANCE.client.lock()
             onLocked(binding.textTimerValue, binding.textStatusValue)
         }
         binding.buttonEnroll.setOnClickListener {
             scanQRCode()
-        }
-        binding.buttonLogout.setOnClickListener {
-            onLogout()
         }
         binding.buttonQRCode.setOnClickListener {
             scanQRCode()
@@ -62,21 +60,20 @@ class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
         binding.buttonTotp.setOnClickListener {
             onTOTPAuth()
         }
-        binding.buttonMigrationCheck.setOnClickListener {
-            onAccountsMigrationCheck()
-        }
         binding.buttonMigrationExecute.setOnClickListener {
-            onAccountsMigrationExecute()
+            attemptRestoreAccounts()
+        }
+        binding.buttonHotp.setOnClickListener {
+            onHotpAuth()
         }
         binding.buttonAccHistory.setOnClickListener {
             getAccountHistory()
         }
-        binding.buttonSyncAuthentication.setOnClickListener {
-            onSyncAuthToken()
-        }
         binding.buttonAccStatus.setOnClickListener {
             getAccountsStatus()
         }
-        binding.unlockMethodsValue.text = FuturaeSDK.INSTANCE.getClient().activeUnlockMethods.joinToString()
+        binding.unlockMethodsValue.text = FuturaeSDK.INSTANCE.client.activeUnlockMethods.joinToString()
     }
+
+    override fun serviceLogoButton(): MaterialButton = binding.buttonServiceLogo
 }

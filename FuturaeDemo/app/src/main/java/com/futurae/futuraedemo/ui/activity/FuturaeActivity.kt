@@ -7,11 +7,12 @@ import android.content.IntentFilter
 import android.os.Bundle
 import android.text.TextUtils
 import android.widget.Toast
-import androidx.fragment.app.FragmentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.futurae.futuraedemo.ui.showAlert
-import com.futurae.futuraedemo.ui.showDialog
-import com.futurae.futuraedemo.ui.toDialogMessage
+import com.futurae.futuraedemo.util.showAlert
+import com.futurae.futuraedemo.util.showDialog
+import com.futurae.futuraedemo.util.showErrorAlert
+import com.futurae.futuraedemo.util.toDialogMessage
 import com.futurae.sdk.FuturaeCallback
 import com.futurae.sdk.FuturaeClient
 import com.futurae.sdk.FuturaeResultCallback
@@ -21,7 +22,7 @@ import com.futurae.sdk.model.SessionInfo
 import com.futurae.sdk.utils.NotificationUtils
 import timber.log.Timber
 
-abstract class FuturaeActivity : FragmentActivity() {
+abstract class FuturaeActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_URI_STRING = "extra_uri_string"
@@ -72,7 +73,7 @@ abstract class FuturaeActivity : FragmentActivity() {
      * A method to allow the App the request unlock if necessary. Then resume if succesful via callback
      */
     fun onReceivedUri(callback: () -> Unit) {
-        if (FuturaeSDK.INSTANCE.getClient().isLocked) {
+        if (FuturaeSDK.INSTANCE.client.isLocked) {
             showDialog(
                 "URI received",
                 "Received URI but SDK is locked. Please unlock to continue",
@@ -111,6 +112,16 @@ abstract class FuturaeActivity : FragmentActivity() {
                 FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionToken,
                     object : FuturaeResultCallback<SessionInfo?> {
                         override fun success(sessionInfo: SessionInfo?) {
+                            if (sessionInfo == null) {
+                                showDialog(
+                                    "Something went wrong",
+                                    "Please try again",
+                                    "Ok",
+                                    { }
+                                )
+                                return
+                            }
+
                             val session = ApproveSession(sessionInfo)
                             showDialog(
                                 "approve",
@@ -176,13 +187,15 @@ abstract class FuturaeActivity : FragmentActivity() {
                                 }
 
                                 override fun failure(t: Throwable) {
-                                    showAlert("API Error", "Error: \n" + t.message)
+                                    showErrorAlert("API Error", t)
                                 }
                             }, sessionInfo.approveInfo
                         )
                     }
 
                     override fun failure(t: Throwable) {
+                        Timber.e(t)
+                        hideLoading()
                         showAlert("API Error", "Error: \n" + t.message)
                     }
                 })
@@ -208,15 +221,21 @@ abstract class FuturaeActivity : FragmentActivity() {
                                 }
 
                                 override fun failure(t: Throwable) {
-                                    showAlert("API Error", "Error: \n" + t.message)
+                                    showErrorAlert("API Error", t)
                                 }
                             }, sessionInfo.approveInfo
                         )
                     }
 
                     override fun failure(t: Throwable) {
+                        Timber.e(t)
+                        hideLoading()
                         showAlert("API Error", "Error: \n" + t.message)
                     }
                 })
     }
+
+    abstract fun showLoading()
+    abstract fun hideLoading()
+
 }

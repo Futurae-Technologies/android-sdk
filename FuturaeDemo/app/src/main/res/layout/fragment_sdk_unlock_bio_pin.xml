@@ -138,28 +138,12 @@
 				android:text="Scan QR code with BIO" />
 
 			<com.google.android.material.button.MaterialButton
-				android:id="@+id/buttonLogout"
-				style="@style/AppTheme.Button"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center"
-				android:text="Logout" />
-
-			<com.google.android.material.button.MaterialButton
-				android:id="@+id/buttonMigrationCheck"
-				style="@style/AppTheme.Button"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center"
-				android:text="Check for Acc migration" />
-
-			<com.google.android.material.button.MaterialButton
 				android:id="@+id/buttonMigrationExecute"
 				style="@style/AppTheme.Button"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="Execute Acc migration" />
+				android:text="Attempt Account Migration " />
 
 			<com.google.android.material.button.MaterialButton
 				android:id="@+id/buttonUnlockMethods"
@@ -178,12 +162,12 @@
 				android:text="Account History" />
 
 			<com.google.android.material.button.MaterialButton
-				android:id="@+id/buttonSyncAuthentication"
+				android:id="@+id/buttonHotp"
 				style="@style/AppTheme.Button"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="Sync Auth Token" />
+				android:text="Get HOTP JWT" />
 
 			<com.google.android.material.button.MaterialButton
 				android:id="@+id/buttonAccStatus"
@@ -191,7 +175,15 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="Account Status" />
+				android:text="Accounts Status" />
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/buttonServiceLogo"
+				style="@style/AppTheme.Button"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center"
+				android:text="Service Logo" />
 
 		</LinearLayout>
 
@@ -299,5 +291,17 @@
 		</androidx.constraintlayout.widget.ConstraintLayout>
 
 	</com.google.android.material.card.MaterialCardView>
+
+	<ProgressBar
+		android:id="@+id/progressBar"
+		android:visibility="gone"
+		tools:visibility="visible"
+		style="@style/Widget.Material3.CircularProgressIndicator.Medium"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintTop_toTopOf="parent"
+		app:layout_constraintBottom_toBottomOf="parent"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
