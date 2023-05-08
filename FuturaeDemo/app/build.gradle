@@ -26,9 +26,11 @@ android {
         }
 
         release {
+            applicationIdSuffix ".prod"
             minifyEnabled true
             signingConfig signingConfigs.debug
-            applicationIdSuffix ".prod"
+
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
 
     }
@@ -77,7 +79,7 @@ dependencies {
     implementation 'com.andrognito.pinlockview:pinlockview:2.1.0'
     implementation 'com.github.bumptech.glide:glide:4.15.0'
 
-    implementation 'com.futurae.sdk:futuraekit:2.1.0'
+    implementation 'com.futurae.sdk:futuraekit:2.1.1'
 }
 
 apply plugin: 'com.google.gms.google-services'
