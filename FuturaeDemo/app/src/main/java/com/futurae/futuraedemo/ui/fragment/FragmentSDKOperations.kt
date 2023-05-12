@@ -11,22 +11,34 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.AppCompatEditText
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import com.futurae.futuraedemo.R
+import com.futurae.futuraedemo.ui.AccountSelectionSheet
 import com.futurae.futuraedemo.ui.activity.ActivityAccountHistory
 import com.futurae.futuraedemo.ui.activity.FTRQRCodeActivity
 import com.futurae.futuraedemo.ui.activity.FuturaeActivity
+import com.futurae.futuraedemo.util.LocalStorage
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.futuraedemo.util.toDialogMessage
-import com.futurae.futuraedemo.util.LocalStorage
-import com.futurae.sdk.*
+import com.futurae.sdk.Callback
+import com.futurae.sdk.FuturaeCallback
+import com.futurae.sdk.FuturaeClient
+import com.futurae.sdk.FuturaeResultCallback
+import com.futurae.sdk.FuturaeSDK
+import com.futurae.sdk.LockConfigurationType
+import com.futurae.sdk.MalformedQRCodeException
 import com.futurae.sdk.approve.ApproveSession
 import com.futurae.sdk.exception.LockOperationIsLockedException
-import com.futurae.sdk.model.*
+import com.futurae.sdk.model.AccountsMigrationResource
+import com.futurae.sdk.model.AccountsStatus
+import com.futurae.sdk.model.ApproveInfo
+import com.futurae.sdk.model.MigrateableAccounts
+import com.futurae.sdk.model.SessionInfo
 import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.material.button.MaterialButton
 import timber.log.Timber
@@ -61,7 +73,10 @@ abstract class FragmentSDKOperations : Fragment() {
                 val imageView = dialogView.findViewById<ImageView>(R.id.logoImage)
                 Glide.with(this).load(ftAccount.serviceLogo).placeholder(R.drawable.ic_settings).into(imageView)
                 val dialog =
-                    AlertDialog.Builder(requireContext(), com.google.android.material.R.style.Theme_Material3_Light_Dialog).setTitle("Service Logo")
+                    AlertDialog.Builder(
+                        requireContext(),
+                        com.google.android.material.R.style.Theme_Material3_Light_Dialog
+                    ).setTitle("Service Logo")
                         .setView(dialogView).setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
                         }.create()
@@ -262,6 +277,46 @@ abstract class FragmentSDKOperations : Fragment() {
         }
     }
 
+    protected fun onManualEntryEnroll(sdkPin: CharArray? = null) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_manual_entry, null, false)
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogView)
+            .setPositiveButton("ok") { _, _ ->
+                val activationShortCode =
+                    dialogView.findViewById<AppCompatEditText>(R.id.edittext).text.toString().replace(" ", "")
+                if (sdkPin != null) {
+                    FuturaeSDK.INSTANCE.client.enrollWithShortcodeAndSetupSDKPin(
+                        activationShortCode,
+                        sdkPin,
+                        object : Callback<Unit> {
+                            override fun onSuccess(result: Unit) {
+                                Timber.i("Enrollment successful")
+                                showAlert("Success", "Enrollment successful")
+                            }
+
+                            override fun onError(throwable: Throwable) {
+                                Timber.e("Enrollment failed: " + throwable.localizedMessage)
+                                showErrorAlert("SDK Unlock", throwable)
+                            }
+                        })
+                } else {
+                    FuturaeSDK.INSTANCE.client.enrollWithShortcode(activationShortCode, object : FuturaeCallback {
+                        override fun success() {
+                            Timber.i("Enrollment successful")
+                            showAlert("Success", "Enrollment successful")
+                        }
+
+                        override fun failure(throwable: Throwable) {
+                            Timber.e("Enrollment failed: " + throwable.localizedMessage)
+                            showErrorAlert("SDK Unlock", throwable)
+                        }
+                    })
+                }
+            }
+            .create()
+        dialog.show()
+    }
+
     private fun onAuthQRCodeScanned(data: Intent) {
         (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
             var userId: String? = null
@@ -367,12 +422,79 @@ abstract class FragmentSDKOperations : Fragment() {
         }
     }
 
+    protected fun onAnonymousQRCodeScanned(data: Intent) {
+        (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { barcode ->
+            val modalBottomSheet = AccountSelectionSheet().apply {
+                listener = object : AccountSelectionSheet.Listener {
+                    override fun onAccountSelected(userId: String) {
+                        approveUsernamelessQr(barcode.rawValue, userId)
+                    }
+                }
+            }
+            modalBottomSheet.show(childFragmentManager, AccountSelectionSheet.TAG)
+        }
+    }
+
+    private fun approveUsernamelessQr(qrCode: String, userId: String) {
+        val sessionToken = FuturaeClient.getSessionTokenFromQrcode(qrCode)
+        FuturaeSDK.INSTANCE.client.sessionInfoByToken(
+            userId,
+            sessionToken,
+            object : FuturaeResultCallback<SessionInfo> {
+                override fun success(sessionInfo: SessionInfo) {
+                    val session = ApproveSession(sessionInfo)
+                    showDialog("approve",
+                        "Would you like to approve the request?${session.toDialogMessage()}",
+                        "Approve",
+                        {
+                            FuturaeSDK.INSTANCE.client.approveAuthWithUsernamelessQrCode(
+                                qrCode,
+                                userId,
+                                session.info,
+                                object : Callback<Unit> {
+                                    override fun onSuccess(result: Unit) {
+                                        Toast.makeText(requireContext(), "Approved", Toast.LENGTH_SHORT).show()
+                                    }
+
+                                    override fun onError(throwable: Throwable) {
+                                        showErrorAlert("SDK Error", throwable)
+                                    }
+
+                                },
+                            )
+                        },
+                        "Deny",
+                        {
+                            FuturaeSDK.INSTANCE.client.rejectAuthWithUsernamelessQrCode(
+                                qrCode,
+                                userId,
+                                session.info,
+                                object : Callback<Unit> {
+                                    override fun onSuccess(result: Unit) {
+                                        Toast.makeText(requireContext(), "Rejected", Toast.LENGTH_SHORT).show()
+                                    }
+
+                                    override fun onError(throwable: Throwable) {
+                                        showErrorAlert("SDK Error", throwable)
+                                    }
+                                },
+                            )
+                        })
+                }
+
+                override fun failure(t: Throwable) {
+                    showErrorAlert("SDK Unlock", t)
+                }
+            })
+    }
+
     protected fun onQRCodeScanned(data: Intent) {
         (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
             when (FuturaeClient.getQrcodeType(qrcode.rawValue)) {
                 FuturaeClient.QR_ENROLL -> onEnrollQRCodeScanned(data)
                 FuturaeClient.QR_ONLINE -> onAuthQRCodeScanned(data)
                 FuturaeClient.QR_OFFLINE -> onOfflineAuthQRCodeScanned(data)
+                FuturaeClient.QR_USERNAMELESS -> onAnonymousQRCodeScanned(data)
             }
         }
     }

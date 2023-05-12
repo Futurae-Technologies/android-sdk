@@ -6,6 +6,8 @@
 		<item name="colorPrimary">@color/primaryColor</item>
 		<item name="colorPrimaryDark">@color/primaryDarkColor</item>
 		<item name="colorSecondary">@color/secondaryColor</item>
+
+		<item name="bottomSheetDialogTheme">@style/ModalBottomSheetDialog</item>
 	</style>
 
 	<style name="AppTheme.Button" parent="Widget.Material3.Button.OutlinedButton">
@@ -14,6 +16,14 @@
 
 	<style name="AppTheme.MaterialButton_1" parent="Widget.Material3.Button">
 		<item name="android:layout_margin">8dp</item>
+	</style>
+
+	<style name="ModalBottomSheet" parent="Widget.Material3.BottomSheet.Modal">
+		<!-- Apply attributes here -->
+	</style>
+
+	<style name="ModalBottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
+		<item name="bottomSheetStyle">@style/ModalBottomSheet</item>
 	</style>
 
 </resources>

@@ -43,7 +43,16 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:text="Enroll" />
+                android:text="Enroll QR code" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonEnrollManual"
+                style="@style/AppTheme.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="Enroll Manual" />
+
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonTotp"

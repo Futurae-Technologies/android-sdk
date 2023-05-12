@@ -56,6 +56,9 @@ class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
         binding.buttonEnroll.setOnClickListener {
             scanQRCode()
         }
+        binding.buttonEnrollManual.setOnClickListener {
+            onManualEntryEnroll()
+        }
         binding.buttonQRCode.setOnClickListener {
             scanQRCode()
         }

@@ -295,6 +295,9 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
         binding.buttonEnroll.setOnClickListener {
             scanQRCode()
         }
+        binding.buttonEnrollManual.setOnClickListener {
+            onManualEntryEnroll()
+        }
         binding.buttonQRCode.setOnClickListener {
             scanQRCode()
         }
@@ -303,6 +306,11 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
             getQRCodeCallback.launch(
                 FTRQRCodeActivity.getIntent(requireContext(), true, false),
             )
+        }
+        binding.buttonEnrollManualWithPin.setOnClickListener {
+            getPinWithCallback {
+                onManualEntryEnroll(it)
+            }
         }
         binding.buttonTotp.setOnClickListener {
             onTOTPAuth()
