@@ -79,7 +79,28 @@ dependencies {
     implementation 'com.andrognito.pinlockview:pinlockview:2.1.0'
     implementation 'com.github.bumptech.glide:glide:4.15.0'
 
-    implementation 'com.futurae.sdk:futuraekit:2.2.0'
+    // Maven dependecy
+//    implementation 'com.futurae.sdk:futuraekit:2.2.0'
+
+    // Manual Installation and needed dependencies below
+    implementation files('libs/futuraekit-2.2.0.aar')
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-moshi:2.9.0'
+    implementation 'com.squareup.moshi:moshi-adapters:1.14.0'
+    implementation "com.squareup.moshi:moshi-kotlin:1.14.0"
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
+    implementation 'com.github.nisrulz:easydeviceinfo-base:2.4.1'
+    implementation 'com.google.code.gson:gson:2.8.9'
+    implementation "androidx.biometric:biometric:1.1.0"
+    implementation "androidx.security:security-crypto:1.0.0"
+    implementation "com.nimbusds:nimbus-jose-jwt:7.8.1"
+    implementation platform("com.google.firebase:firebase-bom:30.5.0")
+    implementation 'com.google.firebase:firebase-messaging'
+    implementation "androidx.annotation:annotation:1.5.0"
+    implementation "androidx.core:core-ktx:1.9.0"
+    implementation "androidx.biometric:biometric:1.1.0"
+    implementation "androidx.security:security-crypto:1.0.0"
+    implementation "com.google.crypto.tink:tink-android:1.7.0"
 }
 
 apply plugin: 'com.google.gms.google-services'
