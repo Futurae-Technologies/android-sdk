@@ -80,10 +80,10 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:4.15.0'
 
     // Maven dependecy
-//    implementation 'com.futurae.sdk:futuraekit:2.2.0'
+//    implementation 'com.futurae.sdk:futuraekit:2.2.1'
 
     // Manual Installation and needed dependencies below
-    implementation files('libs/futuraekit-2.2.0.aar')
+    implementation files('libs/futuraekit-2.2.1.aar')
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-moshi:2.9.0'
     implementation 'com.squareup.moshi:moshi-adapters:1.14.0'
