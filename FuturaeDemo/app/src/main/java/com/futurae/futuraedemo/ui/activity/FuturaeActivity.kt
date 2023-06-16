@@ -4,11 +4,17 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.text.TextUtils
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
@@ -16,7 +22,8 @@ import com.futurae.futuraedemo.util.toDialogMessage
 import com.futurae.sdk.FuturaeCallback
 import com.futurae.sdk.FuturaeClient
 import com.futurae.sdk.FuturaeResultCallback
-import com.futurae.sdk.FuturaeSDK
+import com.futurae.sdk.adaptive.AdaptiveSDK
+import com.futurae.sdk.adaptive.model.AdaptiveCollection
 import com.futurae.sdk.approve.ApproveSession
 import com.futurae.sdk.model.SessionInfo
 import com.futurae.sdk.utils.NotificationUtils
@@ -26,6 +33,29 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_URI_STRING = "extra_uri_string"
+    }
+
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissionResultMap ->
+        if (permissionResultMap.values.contains(false)) {
+            AlertDialog.Builder(this)
+                .setTitle("Missing Adaptive Permissions")
+                .setMessage("Make sure to grant all adaptive permissions to make the best out of the functionality. Press Settings to grant missing permissions")
+                .setPositiveButton("Settings") { v, which ->
+                    startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", packageName, null)
+                        }
+                    )
+                }
+                .setNegativeButton("Cancel") { v, w ->
+                    {
+                        //nothing
+                    }
+                }
+                .show()
+        }
     }
 
     private val intentFilter = IntentFilter().apply {
@@ -50,6 +80,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
                         intent.getStringExtra(NotificationUtils.PARAM_DEVICE_ID)!!
                     onUnenroll(userId, deviceId)
                 }
+
                 NotificationUtils.INTENT_APPROVE_AUTH_MESSAGE -> {
                     val hasExtraInfo =
                         intent.getBooleanExtra(NotificationUtils.PARAM_HAS_EXTRA_INFO, false)
@@ -57,9 +88,11 @@ abstract class FuturaeActivity : AppCompatActivity() {
                         onApproveAuth(session, hasExtraInfo)
                     }
                 }
+
                 NotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE -> {
                     //no-op
                 }
+
                 NotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR -> Timber.e(
                     NotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR
                 )
@@ -73,7 +106,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
      * A method to allow the App the request unlock if necessary. Then resume if succesful via callback
      */
     fun onReceivedUri(callback: () -> Unit) {
-        if (FuturaeSDK.INSTANCE.client.isLocked) {
+        if (FuturaeSdkWrapper.client.isLocked) {
             showDialog(
                 "URI received",
                 "Received URI but SDK is locked. Please unlock to continue",
@@ -87,6 +120,11 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+            permissionLauncher.launch(
+                requestAdaptivePermissions()
+            )
+        }
         intent?.getStringExtra(EXTRA_URI_STRING)?.let {
             handleUri(it)
         }
@@ -150,6 +188,19 @@ abstract class FuturaeActivity : AppCompatActivity() {
         }
     }
 
+    private fun requestAdaptivePermissions(): Array<String> {
+        val permissions = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissions.add(android.Manifest.permission.BLUETOOTH_SCAN)
+            permissions.add(android.Manifest.permission.BLUETOOTH_CONNECT)
+        }
+        permissions.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        return permissions.toTypedArray()
+    }
+
     override fun onResume() {
         super.onResume()
         LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, intentFilter)
@@ -167,7 +218,16 @@ abstract class FuturaeActivity : AppCompatActivity() {
     }
 
     protected fun rejectAuth(session: ApproveSession) {
-        FuturaeSDK.INSTANCE.client
+        var adaptiveCollection: AdaptiveCollection? = null
+        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+            showLoading()
+            AdaptiveSDK.INSTANCE.requestAdaptiveCollection(
+                { dataUpdated -> adaptiveCollection = dataUpdated },
+                { dataComplete -> adaptiveCollection = dataComplete },
+                false
+            )
+        }
+        FuturaeSdkWrapper.client
             .sessionInfoById(
                 session.userId,
                 session.sessionId,
@@ -179,30 +239,49 @@ abstract class FuturaeActivity : AppCompatActivity() {
                             false,
                             object : FuturaeCallback {
                                 override fun success() {
-                                    Toast.makeText(
-                                        this@FuturaeActivity,
-                                        "Rejected",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+                                        hideLoading()
+                                        showAdaptiveAuthDialog(adaptiveCollection!!)
+                                    } else {
+                                        Toast.makeText(
+                                            this@FuturaeActivity,
+                                            "Rejected",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
 
                                 override fun failure(t: Throwable) {
-                                    showErrorAlert("API Error", t)
+                                    Timber.e(t)
+                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+                                        hideLoading()
+                                        showAdaptiveAuthDialog(adaptiveCollection!!, t)
+                                    } else {
+                                        showAlert("API Error", "Error: \n" + t.message)
+                                    }
                                 }
                             }, sessionInfo.approveInfo
                         )
                     }
 
                     override fun failure(t: Throwable) {
-                        Timber.e(t)
                         hideLoading()
-                        showAlert("API Error", "Error: \n" + t.message)
+                        showErrorAlert("API Error", t)
                     }
                 })
     }
 
     protected fun approveAuth(session: ApproveSession) {
-        FuturaeSDK.INSTANCE.client
+        var adaptiveCollection: AdaptiveCollection? = null
+        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+            showLoading()
+            AdaptiveSDK.INSTANCE.requestAdaptiveCollection(
+                { dataUpdated -> adaptiveCollection = dataUpdated },
+                { dataComplete -> adaptiveCollection = dataComplete },
+                false
+            )
+        }
+        FuturaeSdkWrapper.client
             .sessionInfoById(
                 session.userId,
                 session.sessionId,
@@ -213,15 +292,26 @@ abstract class FuturaeActivity : AppCompatActivity() {
                             sessionInfo.sessionId,
                             object : FuturaeCallback {
                                 override fun success() {
-                                    Toast.makeText(
-                                        this@FuturaeActivity,
-                                        "Approved",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+                                        hideLoading()
+                                        showAdaptiveAuthDialog(adaptiveCollection!!)
+                                    } else {
+                                        Toast.makeText(
+                                            this@FuturaeActivity,
+                                            "Approved",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
 
                                 override fun failure(t: Throwable) {
-                                    showErrorAlert("API Error", t)
+                                    Timber.e(t)
+                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+                                        hideLoading()
+                                        showAdaptiveAuthDialog(adaptiveCollection!!, t)
+                                    } else {
+                                        showAlert("API Error", "Error: \n" + t.message)
+                                    }
                                 }
                             }, sessionInfo.approveInfo
                         )
@@ -238,4 +328,14 @@ abstract class FuturaeActivity : AppCompatActivity() {
     abstract fun showLoading()
     abstract fun hideLoading()
 
+    fun showAdaptiveAuthDialog(adaptiveCollection: AdaptiveCollection, error: Throwable? = null) {
+        showDialog(
+            if (error == null) "Auth success" else "Auth failed",
+            if (error == null) "View your adaptive collection details?" else "Request failed with message:\n${error.message}\n View your adaptive collection details?",
+            "View",
+            {
+                startActivity(AdaptiveCollectionDetailsActivity.newIntent(this, adaptiveCollection))
+            }
+        )
+    }
 }

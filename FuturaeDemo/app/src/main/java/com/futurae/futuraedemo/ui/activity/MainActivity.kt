@@ -4,16 +4,14 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.R
 import com.futurae.futuraedemo.databinding.ActivityFragmentContainerBinding
-import com.futurae.futuraedemo.ui.App
-import com.futurae.futuraedemo.ui.EXTRA_APPROVE_SESSION
 import com.futurae.futuraedemo.ui.fragment.FragmentConfiguration
 import com.futurae.futuraedemo.ui.fragment.FragmentMain
 import com.futurae.futuraedemo.ui.fragment.FragmentSettings
@@ -22,10 +20,8 @@ import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.futuraedemo.util.toDialogMessage
-import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.SDKConfiguration
 import com.futurae.sdk.approve.ApproveSession
-import timber.log.Timber
 
 
 class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, FragmentSettings.Listener {
@@ -37,14 +33,14 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
     }
 
     private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        if (!results.containsValue(false)) {
-            //permissions granted
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            //Camera perm granted, can start camera activity
         } else {
             showAlert(
-                "Permissions required",
-                "Please enable camera and notification permissions from App settings, in order to scan barcodes and receive notifications"
+                "Camera Permission required",
+                "Please enable camera permission from App settings, in order to scan barcodes"
             )
         }
     }
@@ -62,18 +58,6 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
             showSelectConfigurationUI()
         }
         checkPermissions()
-
-
-        (intent.getParcelableExtra(EXTRA_APPROVE_SESSION) as? ApproveSession)?.let {
-            onApproveAuth(it,it.hasExtraInfo())
-        }
-    }
-
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-        (intent?.getParcelableExtra(EXTRA_APPROVE_SESSION) as? ApproveSession)?.let {
-            onApproveAuth(it,it.hasExtraInfo())
-        }
     }
 
     private fun showSelectConfigurationUI() {
@@ -103,14 +87,11 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
 
     override fun onConfigurationSelected(sdkConfiguration: SDKConfiguration) {
         try {
-            if(!(application as App).sdkInitialized) {
-                FuturaeSDK.INSTANCE.launch(
-                    application,
-                    sdkConfiguration
-                )
-                localStorage.persistSDKConfiguration(sdkConfiguration)
-                (application as App).sdkInitialized = true
-            }
+            FuturaeSdkWrapper.sdk.launch(
+                application,
+                sdkConfiguration
+            )
+            localStorage.persistSDKConfiguration(sdkConfiguration)
             supportFragmentManager
                 .beginTransaction()
                 .replace(R.id.fragmentContainer, FragmentMain())
@@ -141,7 +122,6 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
             ) == PackageManager.PERMISSION_GRANTED -> {
                 //All good
             }
-
             shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
                 showDialog(
                     "Camera Permission required",
@@ -154,23 +134,13 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
                     }
                 )
             }
-
             else -> {
                 showDialog(
                     "Permission Request",
-                    getString(R.string.permission_rationale),
+                    "In order to scan a QR code, Futurae requires access to the camera.",
                     "ok",
                     {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            requestPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.CAMERA,
-                                    Manifest.permission.POST_NOTIFICATIONS
-                                )
-                            )
-                        } else {
-                            requestPermissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
-                        }
+                        requestPermissionLauncher.launch(Manifest.permission.CAMERA)
                     })
             }
         }

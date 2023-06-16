@@ -49,6 +49,13 @@
             android:layout_marginTop="10dp"
             android:text="Reset" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonIntegrityApi"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Check Device Integrity" />
+
     </LinearLayout>
 
 </androidx.core.widget.NestedScrollView>

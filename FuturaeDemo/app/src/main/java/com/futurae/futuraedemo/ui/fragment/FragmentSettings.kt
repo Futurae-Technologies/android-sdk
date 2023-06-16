@@ -7,17 +7,23 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.databinding.FragmentSdkSettingsBinding
-import com.futurae.futuraedemo.util.showDialog
-import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.futuraedemo.ui.activity.ActivityPin
 import com.futurae.futuraedemo.ui.activity.ActivitySDKConfiguration
 import com.futurae.futuraedemo.ui.activity.EXTRA_CONFIG
 import com.futurae.futuraedemo.ui.activity.EXTRA_PIN
-import com.futurae.sdk.*
-import timber.log.Timber
+import com.futurae.futuraedemo.util.showAlert
+import com.futurae.futuraedemo.util.showDialog
+import com.futurae.futuraedemo.util.showErrorAlert
+import com.futurae.sdk.Callback
+import com.futurae.sdk.FuturaeCallback
+import com.futurae.sdk.LockConfigurationType
+import com.futurae.sdk.SDKConfiguration
+import com.futurae.sdk.model.IntegrityResult
 
 
 class FragmentSettings : Fragment() {
@@ -50,7 +56,7 @@ class FragmentSettings : Fragment() {
             && result.data?.hasExtra(EXTRA_PIN) == true
         ) {
             try {
-                FuturaeSDK.INSTANCE.switchToLockConfigurationWithPin(
+                FuturaeSdkWrapper.sdk.switchToLockConfigurationWithPin(
                     requireActivity().application,
                     updatedConfiguration,
                     result.data?.getCharArrayExtra(EXTRA_PIN) as CharArray,
@@ -80,31 +86,48 @@ class FragmentSettings : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.buttonLoggout.setOnClickListener {
-            val accounts = FuturaeSDK.INSTANCE.getClient().accounts
+            val accounts = FuturaeSdkWrapper.sdk.client.accounts
             if (accounts.isEmpty()) {
                 showErrorAlert("SDK Error", Throwable("No accounts found to logout"))
             } else {
                 accounts.forEach { account ->
-                    FuturaeSDK.INSTANCE.getClient().logout(account.userId, object : FuturaeCallback {
+                    FuturaeSdkWrapper.sdk.client.logout(account.userId, object : FuturaeCallback {
                         override fun success() {
-                            Timber.i("Successfully logged out: ${account.userId}")
+                            Toast.makeText(requireContext(), "Logout successful", Toast.LENGTH_SHORT).show()
                         }
 
-                        override fun failure(throwable: Throwable?) {
-                            Timber.e("Error logging out: ${account.userId}")
+                        override fun failure(throwable: Throwable) {
+                            showErrorAlert("Logout Error", throwable)
                         }
                     })
                 }
             }
         }
         binding.buttonReset.setOnClickListener {
-            FuturaeSDK.INSTANCE.reset(requireContext())
+            FuturaeSdkWrapper.sdk.reset(requireContext())
             listener?.onSDKReset()
         }
         binding.buttonSwitchConfig.setOnClickListener {
             launchSDKConfiguration.launch(
                 Intent(requireContext(), ActivitySDKConfiguration::class.java)
             )
+        }
+        binding.buttonIntegrityApi.setOnClickListener {
+            FuturaeSdkWrapper.client.getIntegrityVerdict(object : Callback<IntegrityResult> {
+                override fun onSuccess(result: IntegrityResult) {
+                    showAlert(
+                        "SDK Integrity Verdict",
+                        "App Verdict: ${result.appVerdict}\n" +
+                                "Device Verdict: ${result.deviceVerdicts.joinToString(separator = ",")}\n" +
+                                "Account Verdict: ${result.licenseVerdict}"
+                    )
+                }
+
+                override fun onError(throwable: Throwable) {
+                    showErrorAlert("SDK Error", throwable)
+                }
+
+            })
         }
     }
 
@@ -113,19 +136,20 @@ class FragmentSettings : Fragment() {
             updatedConfiguration = config
             when (config.lockConfigurationType) {
                 LockConfigurationType.NONE -> {
-                    FuturaeSDK.INSTANCE.switchToLockConfigurationNone(
+                    FuturaeSdkWrapper.sdk.switchToLockConfigurationNone(
                         requireActivity().application,
                         config,
                         switchConfigCallback
                     )
                 }
+
                 LockConfigurationType.BIOMETRICS_ONLY -> {
                     showDialog(
                         "SDK",
                         "Authenticate to complete configuration change",
                         "OK",
                         {
-                            FuturaeSDK.INSTANCE.switchToLockConfigurationBiometrics(
+                            FuturaeSdkWrapper.sdk.switchToLockConfigurationBiometrics(
                                 config,
                                 requireActivity(),
                                 "Authenticate",
@@ -137,13 +161,14 @@ class FragmentSettings : Fragment() {
                         }
                     )
                 }
+
                 LockConfigurationType.BIOMETRICS_OR_DEVICE_CREDENTIALS -> {
                     showDialog(
                         "SDK",
                         "Authenticate to complete configuration change",
                         "OK",
                         {
-                            FuturaeSDK.INSTANCE.switchToLockConfigurationBiometricsOrCredentials(
+                            FuturaeSdkWrapper.sdk.switchToLockConfigurationBiometricsOrCredentials(
                                 config,
                                 requireActivity(),
                                 "Authenticate",
@@ -154,6 +179,7 @@ class FragmentSettings : Fragment() {
                             )
                         })
                 }
+
                 LockConfigurationType.SDK_PIN_WITH_BIOMETRICS_OPTIONAL -> {
                     updatedConfiguration = config
                     launchPin.launch(ActivityPin.newIntentForConfigChange(requireContext()))

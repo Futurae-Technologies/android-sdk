@@ -8,17 +8,17 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.databinding.ActivityHistoryBinding
 import com.futurae.futuraedemo.databinding.ItemAccountHistoryBinding
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.futuraedemo.util.toDialogMessage
 import com.futurae.sdk.Callback
-import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.approve.ApproveSession
 import com.futurae.sdk.model.AccountHistory
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
 
 class ActivityAccountHistory : FuturaeActivity() {
 
@@ -35,8 +35,8 @@ class ActivityAccountHistory : FuturaeActivity() {
         binding.recyclerView.isVisible = false
         binding.recyclerView.adapter = adapter
         binding.recyclerView.addItemDecoration(DividerItemDecoration(this, DividerItemDecoration.VERTICAL))
-        FuturaeSDK.INSTANCE.getClient().accounts.first()?.let {
-            FuturaeSDK.INSTANCE.getClient().getAccountHistory(it.userId, object : Callback<List<AccountHistory>> {
+        FuturaeSdkWrapper.client.accounts.first()?.let {
+            FuturaeSdkWrapper.client.getAccountHistory(it.userId, object : Callback<List<AccountHistory>> {
                 override fun onSuccess(result: List<AccountHistory>) {
                     if (result.isNotEmpty()) {
                         binding.progress.isVisible = false
@@ -61,14 +61,6 @@ class ActivityAccountHistory : FuturaeActivity() {
 
     }
 
-    override fun showLoading() {
-        //no-op
-    }
-
-    override fun hideLoading() {
-        //no-op
-    }
-
     override fun onApproveAuth(session: ApproveSession, hasExtraInfo: Boolean) {
         showDialog(
             "approve",
@@ -77,6 +69,14 @@ class ActivityAccountHistory : FuturaeActivity() {
             { approveAuth(session) },
             "Deny",
             { rejectAuth(session) })
+    }
+
+    override fun showLoading() {
+        binding.progress.isVisible = true
+    }
+
+    override fun hideLoading() {
+        binding.progress.isVisible = false
     }
 }
 
@@ -120,7 +120,7 @@ class AccountHistoryViewHolder(private val itemAccountHistoryBinding: ItemAccoun
 
     fun bind(history: AccountHistory, date: String) {
         itemAccountHistoryBinding.typeValueText.text = history.details.type
-        itemAccountHistoryBinding.statusValueText.text = history.details.isSuccess.toString()
+        itemAccountHistoryBinding.statusValueText.text = history.details.isSuccess().toString()
         itemAccountHistoryBinding.dateValueText.text = date
         itemAccountHistoryBinding.resultValueText.text = history.details.result
     }

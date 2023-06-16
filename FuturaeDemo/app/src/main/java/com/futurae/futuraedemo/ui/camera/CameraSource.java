@@ -853,7 +853,7 @@ public class CameraSource {
         private Size mPicture;
 
         public SizePair(Camera.Size previewSize,
-						Camera.Size pictureSize) {
+                        Camera.Size pictureSize) {
             mPreview = new Size(previewSize.width, previewSize.height);
             mPicture = new Size(pictureSize.width, pictureSize.height);
         }

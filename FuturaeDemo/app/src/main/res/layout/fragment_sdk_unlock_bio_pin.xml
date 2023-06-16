@@ -170,6 +170,30 @@
 				android:text="Get Active Unlock Methods" />
 
 			<com.google.android.material.button.MaterialButton
+				android:id="@+id/buttonAdaptive"
+				style="@style/AppTheme.Button"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center"
+				tools:text="Enable Adaptive" />
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/buttonViewAdaptiveCollections"
+				style="@style/AppTheme.Button"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center"
+				android:text="View Adaptive Collections" />
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/buttonConfigureAdaptiveTime"
+				style="@style/AppTheme.Button"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center"
+				android:text="Set Adaptive Threshold" />
+
+			<com.google.android.material.button.MaterialButton
 				android:id="@+id/buttonAccHistory"
 				style="@style/AppTheme.Button"
 				android:layout_width="wrap_content"

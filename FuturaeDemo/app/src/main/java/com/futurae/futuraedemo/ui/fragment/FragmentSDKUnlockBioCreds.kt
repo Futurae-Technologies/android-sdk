@@ -4,13 +4,12 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.databinding.FragmentSdkUnlockBioCredsBinding
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.sdk.Callback
-import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.model.UserPresenceVerification
 import com.google.android.material.button.MaterialButton
-import timber.log.Timber
 
 class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
 
@@ -28,7 +27,7 @@ class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.buttonUnlock.setOnClickListener {
-            FuturaeSDK.INSTANCE.client.unlockWithBiometricsDeviceCredentials(
+            FuturaeSdkWrapper.client.unlockWithBiometricsDeviceCredentials(
                 requireActivity(),
                 "Unlock SDK",
                 "Authenticate with biometrics or device credentials",
@@ -40,7 +39,6 @@ class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
                     }
 
                     override fun onError(throwable: Throwable) {
-                        Timber.e(throwable)
                         onLocked(binding.textTimerValue, binding.textStatusValue)
                         showErrorAlert("SDK Unlock", throwable)
                     }
@@ -48,7 +46,7 @@ class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
             )
         }
         binding.buttonLock.setOnClickListener {
-            FuturaeSDK.INSTANCE.client.lock()
+            FuturaeSdkWrapper.client.lock()
             onLocked(binding.textTimerValue, binding.textStatusValue)
         }
         binding.buttonEnroll.setOnClickListener {
@@ -75,8 +73,14 @@ class FragmentSDKUnlockBioCreds : FragmentSDKLockedFragment() {
         binding.buttonAccStatus.setOnClickListener {
             getAccountsStatus()
         }
-        binding.unlockMethodsValue.text = FuturaeSDK.INSTANCE.client.activeUnlockMethods.joinToString()
+        binding.unlockMethodsValue.text = FuturaeSdkWrapper.client.activeUnlockMethods.joinToString()
     }
+
+    override fun toggleAdaptiveButton(): MaterialButton = binding.buttonAdaptive
+
+    override fun viewAdaptiveCollectionsButton(): MaterialButton = binding.buttonViewAdaptiveCollections
+
+    override fun setAdaptiveThreshold(): MaterialButton = binding.buttonConfigureAdaptiveTime
 
     override fun serviceLogoButton(): MaterialButton = binding.buttonServiceLogo
 }

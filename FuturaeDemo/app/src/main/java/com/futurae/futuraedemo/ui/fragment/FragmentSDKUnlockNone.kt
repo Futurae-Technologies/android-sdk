@@ -47,5 +47,9 @@ class FragmentSDKUnlockNone : FragmentSDKOperations() {
             getAccountsStatus()
         }
     }
+
+    override fun toggleAdaptiveButton(): MaterialButton = binding.buttonAdaptive
+    override fun viewAdaptiveCollectionsButton(): MaterialButton = binding.buttonViewAdaptiveCollections
+    override fun setAdaptiveThreshold(): MaterialButton = binding.buttonConfigureAdaptiveTime
     override fun serviceLogoButton(): MaterialButton = binding.buttonServiceLogo
 }
