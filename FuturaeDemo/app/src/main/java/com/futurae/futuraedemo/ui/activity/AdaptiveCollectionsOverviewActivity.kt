@@ -11,11 +11,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.databinding.ActivityAdaptiveOverviewBinding
 import com.futurae.futuraedemo.databinding.ItemAdaptiveCollectionBinding
-import com.futurae.futuraedemo.util.showDialog
-import com.futurae.futuraedemo.util.toDialogMessage
 import com.futurae.sdk.adaptive.AdaptiveDbHelper
 import com.futurae.sdk.adaptive.model.AdaptiveCollection
-import com.futurae.sdk.approve.ApproveSession
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -38,16 +35,6 @@ class AdaptiveViewerActivity : FuturaeActivity() {
 
     override fun hideLoading() {
         binding.progressLayout.isVisible = false
-    }
-
-    override fun onApproveAuth(session: ApproveSession, hasExtraInfo: Boolean) {
-        showDialog(
-            "approve",
-            "Would you like to approve the request?${session.toDialogMessage()}",
-            "Approve",
-            { approveAuth(session) },
-            "Deny",
-            { rejectAuth(session) })
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

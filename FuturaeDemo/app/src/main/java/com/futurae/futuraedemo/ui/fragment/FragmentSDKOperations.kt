@@ -152,7 +152,7 @@ abstract class FragmentSDKOperations : Fragment() {
                         val sessionInfos = result.statuses.first().sessionInfos
                         if (sessionInfos.isNotEmpty()) {
                             val session = ApproveSession(sessionInfos.first())
-                            (activity as FuturaeActivity).onApproveAuth(session, session.hasExtraInfo())
+                            (activity as FuturaeActivity).onApproveAuth(session, session.hasExtraInfo(), null)
                         }
                     }
 

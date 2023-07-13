@@ -19,9 +19,7 @@ import com.futurae.futuraedemo.util.LocalStorage
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
-import com.futurae.futuraedemo.util.toDialogMessage
 import com.futurae.sdk.SDKConfiguration
-import com.futurae.sdk.approve.ApproveSession
 
 
 class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, FragmentSettings.Listener {
@@ -65,16 +63,6 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
             .beginTransaction()
             .replace(R.id.fragmentContainer, FragmentConfiguration())
             .commit()
-    }
-
-    override fun onApproveAuth(session: ApproveSession, hasExtraInfo: Boolean) {
-        showDialog(
-            "approve",
-            "Would you like to approve the request?${session.toDialogMessage()}",
-            "Approve",
-            { approveAuth(session) },
-            "Deny",
-            { rejectAuth(session) })
     }
 
     override fun showLoading() {
@@ -122,6 +110,7 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
             ) == PackageManager.PERMISSION_GRANTED -> {
                 //All good
             }
+
             shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
                 showDialog(
                     "Camera Permission required",
@@ -134,6 +123,7 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
                     }
                 )
             }
+
             else -> {
                 showDialog(
                     "Permission Request",

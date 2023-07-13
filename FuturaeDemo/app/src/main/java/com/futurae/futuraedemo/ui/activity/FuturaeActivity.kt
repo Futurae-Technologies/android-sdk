@@ -25,8 +25,11 @@ import com.futurae.sdk.FuturaeResultCallback
 import com.futurae.sdk.adaptive.AdaptiveSDK
 import com.futurae.sdk.adaptive.model.AdaptiveCollection
 import com.futurae.sdk.approve.ApproveSession
+import com.futurae.sdk.exception.LockOperationIsLockedException
+import com.futurae.sdk.exception.LockUnexpectedException
 import com.futurae.sdk.model.SessionInfo
 import com.futurae.sdk.utils.NotificationUtils
+import org.json.JSONArray
 import timber.log.Timber
 
 abstract class FuturaeActivity : AppCompatActivity() {
@@ -84,8 +87,22 @@ abstract class FuturaeActivity : AppCompatActivity() {
                 NotificationUtils.INTENT_APPROVE_AUTH_MESSAGE -> {
                     val hasExtraInfo =
                         intent.getBooleanExtra(NotificationUtils.PARAM_HAS_EXTRA_INFO, false)
+
+                    val decryptedExtras = try {
+                        FuturaeSdkWrapper.client.getDecryptedPushNotificationExtras(intent)
+                    } catch (e: LockOperationIsLockedException) {
+                        Timber.e("Please unlock SDK to get extras: ${e.message}")
+                        null
+                    } catch (e: IllegalStateException) {
+                        Timber.e("Some data is missing for decryption: ${e.message}")
+                        null
+                    } catch (e: LockUnexpectedException) {
+                        Timber.e("Cryptography error: ${e.message}")
+                        null
+                    }
+
                     (intent.getParcelableExtra(NotificationUtils.PARAM_APPROVE_SESSION) as? ApproveSession)?.let { session ->
-                        onApproveAuth(session, hasExtraInfo)
+                        onApproveAuth(session, hasExtraInfo, decryptedExtras)
                     }
                 }
 
@@ -100,7 +117,15 @@ abstract class FuturaeActivity : AppCompatActivity() {
         }
     }
 
-    abstract fun onApproveAuth(session: ApproveSession, hasExtraInfo: Boolean)
+    fun onApproveAuth(session: ApproveSession, hasExtraInfo: Boolean, decryptedExtras: JSONArray?) {
+        showDialog(
+            "approve",
+            "Would you like to approve the request?${session.toDialogMessage()} \n extras: ${decryptedExtras?.toString()}",
+            "Approve",
+            { approveAuth(session) },
+            "Deny",
+            { rejectAuth(session) })
+    }
 
     /**
      * A method to allow the App the request unlock if necessary. Then resume if succesful via callback

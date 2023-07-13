@@ -11,11 +11,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.databinding.ActivityHistoryBinding
 import com.futurae.futuraedemo.databinding.ItemAccountHistoryBinding
-import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
-import com.futurae.futuraedemo.util.toDialogMessage
 import com.futurae.sdk.Callback
-import com.futurae.sdk.approve.ApproveSession
 import com.futurae.sdk.model.AccountHistory
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -59,16 +56,6 @@ class ActivityAccountHistory : FuturaeActivity() {
             })
         }
 
-    }
-
-    override fun onApproveAuth(session: ApproveSession, hasExtraInfo: Boolean) {
-        showDialog(
-            "approve",
-            "Would you like to approve the request?${session.toDialogMessage()}",
-            "Approve",
-            { approveAuth(session) },
-            "Deny",
-            { rejectAuth(session) })
     }
 
     override fun showLoading() {
