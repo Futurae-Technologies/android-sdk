@@ -164,5 +164,26 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/checkboxBioInvalidation" />
 
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/corruptDbButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Corrupt DB"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/finishButton" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/corruptv1KeysButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Corrupt v1 keys"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/corruptDbButton" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

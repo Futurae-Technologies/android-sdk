@@ -11,6 +11,7 @@ import com.futurae.futuraedemo.databinding.FragmentSdkConfigurationBinding
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.sdk.LockConfigurationType
 import com.futurae.sdk.SDKConfiguration
+import com.futurae.sdk.debug.FuturaeDebugUtil
 
 class FragmentConfiguration : Fragment() {
 
@@ -63,6 +64,12 @@ class FragmentConfiguration : Fragment() {
             } catch (e: Exception) {
                 showErrorAlert("SDK Error", e)
             }
+        }
+        binding.corruptv1KeysButton.setOnClickListener {
+            FuturaeDebugUtil.INSTANCE.corruptV1Keys(requireContext())
+        }
+        binding.corruptDbButton.setOnClickListener {
+            FuturaeDebugUtil.INSTANCE.corruptDBTokens(requireContext())
         }
     }
 

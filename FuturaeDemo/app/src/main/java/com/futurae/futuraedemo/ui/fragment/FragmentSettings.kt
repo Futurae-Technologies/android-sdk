@@ -23,6 +23,7 @@ import com.futurae.sdk.Callback
 import com.futurae.sdk.FuturaeCallback
 import com.futurae.sdk.LockConfigurationType
 import com.futurae.sdk.SDKConfiguration
+import com.futurae.sdk.debug.FuturaeDebugUtil
 import com.futurae.sdk.model.IntegrityResult
 
 
@@ -128,6 +129,9 @@ class FragmentSettings : Fragment() {
                 }
 
             })
+        }
+        binding.buttonClearEncrypted.setOnClickListener {
+            FuturaeDebugUtil.INSTANCE.clearEncryptedTokens()
         }
     }
 

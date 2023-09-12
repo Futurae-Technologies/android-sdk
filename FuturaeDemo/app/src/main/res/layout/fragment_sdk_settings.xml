@@ -56,6 +56,13 @@
             android:layout_marginTop="10dp"
             android:text="Check Device Integrity" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonClearEncrypted"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Clear encrypted storage" />
+
     </LinearLayout>
 
 </androidx.core.widget.NestedScrollView>

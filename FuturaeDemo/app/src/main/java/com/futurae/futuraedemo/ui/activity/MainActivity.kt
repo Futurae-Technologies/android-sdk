@@ -19,7 +19,12 @@ import com.futurae.futuraedemo.util.LocalStorage
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
+import com.futurae.sdk.Callback
 import com.futurae.sdk.SDKConfiguration
+import com.futurae.sdk.exception.LockCorruptedStateException
+import com.futurae.sdk.exception.LockInvalidConfigurationException
+import com.futurae.sdk.exception.LockMechanismUnavailableException
+import com.futurae.sdk.exception.LockUnexpectedException
 
 
 class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, FragmentSettings.Listener {
@@ -79,14 +84,43 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
                 application,
                 sdkConfiguration
             )
-            localStorage.persistSDKConfiguration(sdkConfiguration)
-            supportFragmentManager
-                .beginTransaction()
-                .replace(R.id.fragmentContainer, FragmentMain())
-                .commit()
+            onSDKLaunched(sdkConfiguration)
         } catch (e: Exception) {
-            showErrorAlert("SDK Error", e)
+            when (e) {
+                is IllegalStateException -> showErrorAlert("SDK Already initialized", e)
+                // Indicates that provided SDK configuration is invalid
+                is LockInvalidConfigurationException -> showErrorAlert("SDK Configuration error", e)
+                // Indicates that provided SDK configuration is valid but cannot be supported on this device
+                is LockMechanismUnavailableException -> showErrorAlert("SDK Configuration unsupported on device", e)
+                // Indicates that an SDK cryptographic operation failed
+                is LockUnexpectedException -> showErrorAlert("SDK Cryptography Error", e)
+                // Indicates that the SDK is in a corrupted state and should attempt to recover
+                is LockCorruptedStateException -> {
+                    FuturaeSdkWrapper.sdk.launchAccountRecovery(
+                        application,
+                        sdkConfiguration,
+                        object : Callback<Unit> {
+                            override fun onSuccess(result: Unit) {
+                                onSDKLaunched(sdkConfiguration)
+                            }
+
+                            override fun onError(throwable: Throwable) {
+                                showErrorAlert("SDK Recovery failed", throwable)
+                            }
+
+                        }
+                    )
+                }
+            }
         }
+    }
+
+    private fun onSDKLaunched(sdkConfiguration: SDKConfiguration) {
+        localStorage.persistSDKConfiguration(sdkConfiguration)
+        supportFragmentManager
+            .beginTransaction()
+            .replace(R.id.fragmentContainer, FragmentMain())
+            .commit()
     }
 
     override fun onSDKReset() {
