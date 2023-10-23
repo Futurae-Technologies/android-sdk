@@ -111,16 +111,9 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
                         }
                     )
                 }
+                else -> showErrorAlert("SDK initialization failed", e)
             }
         }
-    }
-
-    private fun onSDKLaunched(sdkConfiguration: SDKConfiguration) {
-        localStorage.persistSDKConfiguration(sdkConfiguration)
-        supportFragmentManager
-            .beginTransaction()
-            .replace(R.id.fragmentContainer, FragmentMain())
-            .commit()
     }
 
     override fun onSDKReset() {
@@ -134,6 +127,17 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
             .beginTransaction()
             .replace(R.id.fragmentContainer, FragmentMain())
             .commit()
+    }
+
+    private fun onSDKLaunched(sdkConfiguration: SDKConfiguration) {
+        localStorage.persistSDKConfiguration(sdkConfiguration)
+        supportFragmentManager
+            .beginTransaction()
+            .replace(R.id.fragmentContainer, FragmentMain())
+            .commit()
+        pendingUri?.let {
+            handleUri(it)
+        }
     }
 
     private fun checkPermissions() {

@@ -2,7 +2,6 @@
 	<string name="app_name">FuturaeDemo</string>
 
 	<string name="qrcode_title">QR Code</string>
-	<string name="permission_rationale">This app requires permission for camera to Scan QR codes and to show Notifications</string>
 	<string name="error_low_storage">QR code scanning cannot be performed due to low device storage</string>
 
 	<string name="menu_home">Home</string>

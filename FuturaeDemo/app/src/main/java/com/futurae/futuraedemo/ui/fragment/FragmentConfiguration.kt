@@ -66,10 +66,10 @@ class FragmentConfiguration : Fragment() {
             }
         }
         binding.corruptv1KeysButton.setOnClickListener {
-            FuturaeDebugUtil.INSTANCE.corruptV1Keys(requireContext())
+            FuturaeDebugUtil.corruptV1Keys(requireContext())
         }
         binding.corruptDbButton.setOnClickListener {
-            FuturaeDebugUtil.INSTANCE.corruptDBTokens(requireContext())
+            FuturaeDebugUtil.corruptDBTokens(requireContext())
         }
     }
 

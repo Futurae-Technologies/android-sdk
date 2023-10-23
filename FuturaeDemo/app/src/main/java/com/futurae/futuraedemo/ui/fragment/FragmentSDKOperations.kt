@@ -73,7 +73,7 @@ abstract class FragmentSDKOperations : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         toggleAdaptiveButton().setOnClickListener {
-            if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+            if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
                 FuturaeSdkWrapper.sdk.disableAdaptive()
                 toggleAdaptiveButton().text = "Enable Adaptive"
             } else {
@@ -82,7 +82,7 @@ abstract class FragmentSDKOperations : Fragment() {
             }
         }
         viewAdaptiveCollectionsButton().setOnClickListener {
-            if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+            if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
                 startActivity(
                     Intent(context, AdaptiveViewerActivity::class.java)
                 )
@@ -91,11 +91,11 @@ abstract class FragmentSDKOperations : Fragment() {
             }
         }
         toggleAdaptiveButton().text =
-            if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) "Disable Adaptive" else "Enable Adaptive"
+            if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) "Disable Adaptive" else "Enable Adaptive"
 
         setAdaptiveThreshold().setOnClickListener {
             if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
-                var sliderValue = AdaptiveSDK.INSTANCE.adaptiveCollectionThreshold
+                var sliderValue = AdaptiveSDK.getAdaptiveCollectionThreshold()
                 val dialogView = layoutInflater.inflate(R.layout.dialog_adaptive_time, null)
                 val textValue = dialogView.findViewById<TextView>(R.id.sliderValue).apply {
                     text = "$sliderValue sec"
@@ -109,7 +109,7 @@ abstract class FragmentSDKOperations : Fragment() {
                 }
                 val dialog = AlertDialog.Builder(requireContext(), R.style.Theme_Material3_Light_Dialog)
                     .setTitle("Adaptive time threshold").setView(dialogView).setPositiveButton("OK") { dialog, which ->
-                        AdaptiveSDK.INSTANCE.adaptiveCollectionThreshold = sliderValue
+                        AdaptiveSDK.setAdaptiveCollectionThreshold(sliderValue)
                     }.create()
                 dialog.show()
             } else {
@@ -465,7 +465,7 @@ abstract class FragmentSDKOperations : Fragment() {
                         "Would you like to approve the request?${session.toDialogMessage()}",
                         "Approve",
                         {
-                            FuturaeSdkWrapper.sdk.client.approveAuthWithUsernamelessQrCode(
+                            FuturaeSdkWrapper.sdk.getClient().approveAuthWithUsernamelessQrCode(
                                 qrCode,
                                 userId,
                                 session.info,
@@ -483,7 +483,7 @@ abstract class FragmentSDKOperations : Fragment() {
                         },
                         "Deny",
                         {
-                            FuturaeSdkWrapper.sdk.client.rejectAuthWithUsernamelessQrCode(
+                            FuturaeSdkWrapper.sdk.getClient().rejectAuthWithUsernamelessQrCode(
                                 qrCode,
                                 userId,
                                 false,

@@ -87,12 +87,12 @@ class FragmentSettings : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.buttonLoggout.setOnClickListener {
-            val accounts = FuturaeSdkWrapper.sdk.client.accounts
+            val accounts = FuturaeSdkWrapper.sdk.getClient().accounts
             if (accounts.isEmpty()) {
                 showErrorAlert("SDK Error", Throwable("No accounts found to logout"))
             } else {
                 accounts.forEach { account ->
-                    FuturaeSdkWrapper.sdk.client.logout(account.userId, object : FuturaeCallback {
+                    FuturaeSdkWrapper.sdk.getClient().logout(account.userId, object : FuturaeCallback {
                         override fun success() {
                             Toast.makeText(requireContext(), "Logout successful", Toast.LENGTH_SHORT).show()
                         }
@@ -131,7 +131,13 @@ class FragmentSettings : Fragment() {
             })
         }
         binding.buttonClearEncrypted.setOnClickListener {
-            FuturaeDebugUtil.INSTANCE.clearEncryptedTokens()
+            FuturaeDebugUtil.clearEncryptedTokens()
+        }
+        binding.buttonClearV2Keys.setOnClickListener {
+            FuturaeDebugUtil.corruptV2Keys(requireContext())
+        }
+        binding.buttonClearV2LocalStorageKey.setOnClickListener {
+            FuturaeDebugUtil.corruptEncryptedStorageKey(requireContext())
         }
     }
 

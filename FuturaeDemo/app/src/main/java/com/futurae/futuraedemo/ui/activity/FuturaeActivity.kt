@@ -23,6 +23,8 @@ import com.futurae.sdk.FuturaeCallback
 import com.futurae.sdk.FuturaeClient
 import com.futurae.sdk.FuturaeResultCallback
 import com.futurae.sdk.adaptive.AdaptiveSDK
+import com.futurae.sdk.adaptive.CompletionCallback
+import com.futurae.sdk.adaptive.UpdateCallback
 import com.futurae.sdk.adaptive.model.AdaptiveCollection
 import com.futurae.sdk.approve.ApproveSession
 import com.futurae.sdk.exception.LockOperationIsLockedException
@@ -34,9 +36,7 @@ import timber.log.Timber
 
 abstract class FuturaeActivity : AppCompatActivity() {
 
-    companion object {
-        const val EXTRA_URI_STRING = "extra_uri_string"
-    }
+    protected var pendingUri : String? = null
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -83,7 +83,6 @@ abstract class FuturaeActivity : AppCompatActivity() {
                         intent.getStringExtra(NotificationUtils.PARAM_DEVICE_ID)!!
                     onUnenroll(userId, deviceId)
                 }
-
                 NotificationUtils.INTENT_APPROVE_AUTH_MESSAGE -> {
                     val hasExtraInfo =
                         intent.getBooleanExtra(NotificationUtils.PARAM_HAS_EXTRA_INFO, false)
@@ -105,11 +104,9 @@ abstract class FuturaeActivity : AppCompatActivity() {
                         onApproveAuth(session, hasExtraInfo, decryptedExtras)
                     }
                 }
-
                 NotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE -> {
                     //no-op
                 }
-
                 NotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR -> Timber.e(
                     NotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR
                 )
@@ -145,13 +142,13 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
             permissionLauncher.launch(
                 requestAdaptivePermissions()
             )
         }
-        intent?.getStringExtra(EXTRA_URI_STRING)?.let {
-            handleUri(it)
+        intent?.dataString?.takeIf { it.isNotBlank() }?.let {
+            pendingUri = it
         }
     }
 
@@ -203,12 +200,13 @@ abstract class FuturaeActivity : AppCompatActivity() {
                 showDialog("Error", "Could not handle URI call", "Ok", { })
             }
         }
+        pendingUri = null
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         //Handle URI from intent
-        intent?.getStringExtra(EXTRA_URI_STRING)?.takeIf { it.isNotBlank() }?.let { uriCall ->
+        intent?.dataString?.takeIf { it.isNotBlank() }?.let { uriCall ->
             handleUri(uriCall)
         }
     }
@@ -244,11 +242,20 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     protected fun rejectAuth(session: ApproveSession) {
         var adaptiveCollection: AdaptiveCollection? = null
-        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
             showLoading()
-            AdaptiveSDK.INSTANCE.requestAdaptiveCollection(
-                { dataUpdated -> adaptiveCollection = dataUpdated },
-                { dataComplete -> adaptiveCollection = dataComplete },
+            // Calling this to register callback for the collection. For debugging purposes
+            AdaptiveSDK.requestAdaptiveCollection(
+                object : UpdateCallback {
+                    override fun onCollectionDataUpdated(data: AdaptiveCollection) {
+                        adaptiveCollection = data
+                    }
+                },
+                object : CompletionCallback{
+                    override fun onCollectionCompleted(data: AdaptiveCollection) {
+                        adaptiveCollection = data
+                    }
+                },
                 false
             )
         }
@@ -264,7 +271,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
                             false,
                             object : FuturaeCallback {
                                 override fun success() {
-                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
                                         hideLoading()
                                         showAdaptiveAuthDialog(adaptiveCollection!!)
                                     } else {
@@ -278,7 +285,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
                                 override fun failure(t: Throwable) {
                                     Timber.e(t)
-                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
                                         hideLoading()
                                         showAdaptiveAuthDialog(adaptiveCollection!!, t)
                                     } else {
@@ -298,11 +305,20 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     protected fun approveAuth(session: ApproveSession) {
         var adaptiveCollection: AdaptiveCollection? = null
-        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
             showLoading()
-            AdaptiveSDK.INSTANCE.requestAdaptiveCollection(
-                { dataUpdated -> adaptiveCollection = dataUpdated },
-                { dataComplete -> adaptiveCollection = dataComplete },
+            // Calling this to register callback for the collection. For debugging purposes
+            AdaptiveSDK.requestAdaptiveCollection(
+                object : UpdateCallback {
+                    override fun onCollectionDataUpdated(data: AdaptiveCollection) {
+                        adaptiveCollection = data
+                    }
+                },
+                object : CompletionCallback{
+                    override fun onCollectionCompleted(data: AdaptiveCollection) {
+                        adaptiveCollection = data
+                    }
+                },
                 false
             )
         }
@@ -317,7 +333,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
                             sessionInfo.sessionId,
                             object : FuturaeCallback {
                                 override fun success() {
-                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
                                         hideLoading()
                                         showAdaptiveAuthDialog(adaptiveCollection!!)
                                     } else {
@@ -331,7 +347,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
                                 override fun failure(t: Throwable) {
                                     Timber.e(t)
-                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled) {
+                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
                                         hideLoading()
                                         showAdaptiveAuthDialog(adaptiveCollection!!, t)
                                     } else {

@@ -9,5 +9,5 @@ object FuturaeSdkWrapper {
         get() = FuturaeSDK.INSTANCE
 
     val client: FuturaeClient
-        get() = sdk.client
+        get() = sdk.getClient()
 }

@@ -45,12 +45,12 @@ class AdaptiveViewerActivity : FuturaeActivity() {
         binding.recycler.adapter = adapter
         binding.clearCollections.setOnClickListener {
             lifecycleScope.launch(Dispatchers.IO) {
-                AdaptiveDbHelper.INSTANCE.deleteAllCollections()
+                AdaptiveDbHelper.deleteAllCollections()
             }
         }
 
         lifecycleScope.launch(Dispatchers.Main) {
-            AdaptiveDbHelper.INSTANCE.allCollections.collect {
+            AdaptiveDbHelper.getAllCollections().collect {
                 binding.emptyText.isVisible = it.isEmpty()
                 binding.recycler.isVisible = it.isNotEmpty()
                 binding.clearCollections.isVisible = it.isNotEmpty()
