@@ -79,7 +79,7 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:4.15.0'
 
     // Futurae SDK
-    implementation 'com.futurae.sdk:futuraekit:2.4.4'
+    implementation 'com.futurae.sdk:futuraekit:2.4.5'
     // OPTIONAL - Adaptive SDK.
     implementation 'com.futurae.sdk:adaptive:1.0.2-alpha'
 }
