@@ -8,9 +8,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.databinding.ActivityAdaptiveOverviewBinding
 import com.futurae.futuraedemo.databinding.ItemAdaptiveCollectionBinding
+import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.adaptive.AdaptiveDbHelper
 import com.futurae.sdk.adaptive.model.AdaptiveCollection
 import com.google.gson.GsonBuilder
@@ -57,7 +57,7 @@ class AdaptiveViewerActivity : FuturaeActivity() {
                 adapter.submitList(it.sortedBy { coll -> coll.timestamp })
 
                 if(it.isEmpty()) {
-                    if(FuturaeSdkWrapper.client.accounts.isEmpty()) {
+                    if(FuturaeSDK.client.accountApi.getActiveAccounts().isEmpty()) {
                         binding.emptyText.text = "You must enroll an account before gathering collections"
                     } else {
                         binding.emptyText.text = "No collections yet"

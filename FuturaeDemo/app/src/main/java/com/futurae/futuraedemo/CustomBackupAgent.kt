@@ -24,7 +24,7 @@ class CustomBackupAgent : BackupAgent() {
             sp.edit().putInt(PREF_RANDOM_STRING, randomInt).apply()
 
             val preferenceValue = randomInt.toString()
-            Timber.d("Starting backup of the prefs configuration in " + PREFS_BACKUP_KEY + ", store: " + randomInt + " as " + preferenceValue)
+            Timber.d("Starting backup of the prefs configuration in $PREFS_BACKUP_KEY, store: $randomInt as $preferenceValue")
 
             val bufStream = ByteArrayOutputStream()
             val outWriter = DataOutputStream(bufStream)
@@ -53,7 +53,9 @@ class CustomBackupAgent : BackupAgent() {
                     if (storedValue.isBlank()) {
                         return
                     }
-                    Timber.d("onRestore: Prefs restore from the backup completed. Value: $storedValue, calling SDK backup agent")
+                    Timber.d(
+                        "onRestore: Prefs restore from the backup completed. Value: ${storedValue}, calling SDK backup agent"
+                    )
                     val sp = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                     sp.edit().putInt(PREF_RANDOM_STRING, storedValue.toInt()).apply()
                 } catch (e: IOException) {

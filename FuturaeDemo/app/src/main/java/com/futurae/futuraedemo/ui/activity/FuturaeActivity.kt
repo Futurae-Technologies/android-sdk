@@ -15,30 +15,33 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
+import com.futurae.futuraedemo.util.showInputDialog
 import com.futurae.futuraedemo.util.toDialogMessage
-import com.futurae.sdk.FuturaeCallback
-import com.futurae.sdk.FuturaeResultCallback
 import com.futurae.sdk.FuturaeSDK
-import com.futurae.sdk.adaptive.AdaptiveSDK
-import com.futurae.sdk.adaptive.CompletionCallback
-import com.futurae.sdk.adaptive.UpdateCallback
-import com.futurae.sdk.adaptive.model.AdaptiveCollection
-import com.futurae.sdk.approve.ApproveSession
-import com.futurae.sdk.exception.LockOperationIsLockedException
-import com.futurae.sdk.exception.LockUnexpectedException
-import com.futurae.sdk.model.SessionInfo
-import com.futurae.sdk.utils.FTUri
-import com.futurae.sdk.utils.NotificationUtils
+import com.futurae.sdk.public_api.account.model.AccountQuery
+import com.futurae.sdk.public_api.account.model.EnrollAccount
+import com.futurae.sdk.public_api.account.model.EnrollmentParams
+import com.futurae.sdk.public_api.account.model.URI
+import com.futurae.sdk.public_api.auth.model.ApproveParameters
+import com.futurae.sdk.public_api.auth.model.RejectParameters
+import com.futurae.sdk.public_api.auth.model.SessionId
+import com.futurae.sdk.public_api.exception.FTAccountNotFoundException
+import com.futurae.sdk.public_api.exception.FTEncryptedStorageCorruptedException
+import com.futurae.sdk.public_api.exception.FTException
+import com.futurae.sdk.public_api.exception.FTInvalidArgumentException
+import com.futurae.sdk.public_api.exception.FTKeystoreOperationException
+import com.futurae.sdk.public_api.session.model.ApproveInfo
+import com.futurae.sdk.public_api.session.model.ApproveSession
+import com.futurae.sdk.public_api.session.model.ById
+import com.futurae.sdk.public_api.session.model.SessionInfoQuery
+import com.futurae.sdk.utils.FTNotificationUtils
+import com.futurae.sdk.utils.FTUriUtils
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import timber.log.Timber
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -46,7 +49,7 @@ import kotlin.coroutines.suspendCoroutine
 
 abstract class FuturaeActivity : AppCompatActivity() {
 
-    protected var pendingUri : String? = null
+    protected var pendingUri: String? = null
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -72,62 +75,82 @@ abstract class FuturaeActivity : AppCompatActivity() {
     }
 
     private val intentFilter = IntentFilter().apply {
-        addAction(NotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE)
-        addAction(NotificationUtils.INTENT_APPROVE_AUTH_MESSAGE)
-        addAction(NotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR)
-        addAction(NotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE)
+        addAction(FTNotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE)
+        addAction(FTNotificationUtils.INTENT_APPROVE_AUTH_MESSAGE)
+        addAction(FTNotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR)
+        addAction(FTNotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE)
     }
 
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            val error = intent.getStringExtra(NotificationUtils.PARAM_ERROR)
+            val error = intent.getStringExtra(FTNotificationUtils.PARAM_ERROR)
             if (!TextUtils.isEmpty(error)) {
                 Timber.e("Received Intent '" + intent.action + "' with error: " + error)
                 return
             }
             when (intent.action) {
-                NotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE -> {
-                    Timber.d(NotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE)
-                    val userId: String = intent.getStringExtra(NotificationUtils.PARAM_USER_ID)!!
+                FTNotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE -> {
+                    Timber.d(FTNotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE)
+                    val userId: String = intent.getStringExtra(FTNotificationUtils.PARAM_USER_ID)!!
                     val deviceId: String =
-                        intent.getStringExtra(NotificationUtils.PARAM_DEVICE_ID)!!
+                        intent.getStringExtra(FTNotificationUtils.PARAM_DEVICE_ID)!!
                     onUnenroll(userId, deviceId)
                 }
-                NotificationUtils.INTENT_APPROVE_AUTH_MESSAGE -> {
-                    val hasExtraInfo =
-                        intent.getBooleanExtra(NotificationUtils.PARAM_HAS_EXTRA_INFO, false)
 
-                    val decryptedExtras = try {
-                        FuturaeSdkWrapper.client.getDecryptedPushNotificationExtras(intent)
-                    } catch (e: LockOperationIsLockedException) {
-                        Timber.e("Please unlock SDK to get extras: ${e.message}")
-                        null
-                    } catch (e: IllegalStateException) {
-                        Timber.e("Some data is missing for decryption: ${e.message}")
-                        null
-                    } catch (e: LockUnexpectedException) {
-                        Timber.e("Cryptography error: ${e.message}")
-                        null
-                    }
+                FTNotificationUtils.INTENT_APPROVE_AUTH_MESSAGE -> {
+                    (intent.getParcelableExtra(FTNotificationUtils.PARAM_APPROVE_SESSION) as? ApproveSession)?.let { approveSession ->
+                        val userId = FTNotificationUtils.getUserId(intent)
+                        val encryptedExtras = FTNotificationUtils.getEncyptedExtras(intent)
 
-                    (intent.getParcelableExtra(NotificationUtils.PARAM_APPROVE_SESSION) as? ApproveSession)?.let { session ->
-                        onApproveAuth(session, hasExtraInfo, decryptedExtras)
+                        if (encryptedExtras == null) {
+                            onApproveAuth(approveSession, null)
+                        } else {
+                            if (userId == null) {
+                                Timber.e("User id is required for encrypted extras")
+                                return
+                            }
+                            val decryptedExtras = try {
+                                FuturaeSDK.client.operationsApi.decryptPushNotificationExtraInfo(
+                                    userId = userId,
+                                    encryptedExtrasString = encryptedExtras
+                                )
+                            } catch (e: FTAccountNotFoundException) {
+                                Timber.e("Account not found: ${e.message}")
+                                null
+                            } catch (e: FTEncryptedStorageCorruptedException) {
+                                Timber.e("Encrypted storage corrupted. Please use account recovery operation: ${e.message}")
+                                null
+                            } catch (e: FTKeystoreOperationException) {
+                                Timber.e("Keystore operation failed: ${e.message}")
+                                null
+                            } catch (e: FTInvalidArgumentException) {
+                                Timber.e("Unable to parse decrypted extra info: ${e.message}")
+                                null
+                            }
+                            onApproveAuth(approveSession, decryptedExtras)
+                        }
                     }
                 }
-                NotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE -> {
+
+                FTNotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE -> {
                     //no-op
                 }
-                NotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR -> Timber.e(
-                    NotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR
+
+                FTNotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR -> Timber.e(
+                    FTNotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR
                 )
             }
         }
     }
 
-    fun onApproveAuth(session: ApproveSession, hasExtraInfo: Boolean, decryptedExtras: JSONArray?) {
+    fun onApproveAuth(
+        session: ApproveSession,
+        decryptedExtras: List<ApproveInfo>?,
+    ) {
         showDialog(
             "approve",
-            "Would you like to approve the request?${session.toDialogMessage()} \n extras: ${decryptedExtras?.toString()} \n ",
+            "Would you like to approve the request?${session.toDialogMessage()} " +
+                    "\n ${decryptedExtras?.let { "PN decrypted extras: ${it.joinToString()}" }}",
             "Approve",
             { approveAuth(session) },
             "Deny",
@@ -138,7 +161,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
      * A method to allow the App the request unlock if necessary. Then resume if succesful via callback
      */
     fun onReceivedUri(callback: () -> Unit) {
-        if (FuturaeSdkWrapper.client.isLocked) {
+        if (FuturaeSDK.client.lockApi.isLocked()) {
             showDialog(
                 "URI received",
                 "Received URI but SDK is locked. Please unlock to continue",
@@ -152,9 +175,14 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
+        if (FuturaeSDK.isAdaptiveEnabled()) {
             permissionLauncher.launch(
                 requestAdaptivePermissions()
+            )
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionLauncher.launch(
+                arrayOf(android.Manifest.permission.POST_NOTIFICATIONS)
             )
         }
         intent?.dataString?.takeIf { it.isNotBlank() }?.let {
@@ -164,78 +192,30 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     fun handleUri(uriCall: String) {
         onReceivedUri {
-            if (uriCall.contains("enroll")) {
-                FuturaeSDK.getClient().handleUri(uriCall, object : FuturaeCallback {
-                    override fun failure(throwable: Throwable?) {
-                        showDialog("Error", "Could not handle URI call", "Ok", { })
+            try {
+                if (FTUriUtils.isEnrollUri(uriCall)) {
+                    // Optional: you may use the enrollAccount API instead of handleUri API,
+                    // to support flow-binding-token
+                    showInputDialog("Flow Binding Token") {
+                        lifecycleScope.launch {
+                            FuturaeSDK.client.accountApi.enrollAccount(
+                                EnrollmentParams(
+                                    URI(uriCall),
+                                    EnrollAccount,
+                                    it
+                                )
+                            ).await()
+                            showToast("URI Enrollment complete")
+                        }
                     }
-
-                    override fun success() {
-                        showDialog("Success", "Successfully enrolled", "Ok", { })
-                    }
-                })
-            } else if (uriCall.contains("auth")) {
-
-                val userId = FTUri.getUserIdFromUri(uriCall)
-                val sessionToken = FTUri.getSessionTokenFromUri(uriCall)
-
-                if(userId?.isNotBlank() == true && sessionToken?.isNotBlank() == true) {
-                    FuturaeSDK.getClient().sessionInfoByToken(userId, sessionToken,
-                        object : FuturaeResultCallback<SessionInfo> {
-                            override fun success(result: SessionInfo?) {
-                                if (result == null) {
-                                    return
-                                }
-                                val session = ApproveSession(result)
-                                if(session.hasExtraInfo()) {
-                                    showDialog(
-                                        "approve",
-                                        "Would you like to approve the request?${session.toDialogMessage()}",
-                                        "Approve",
-                                        {
-                                            FuturaeSDK.getClient().handleUri(uriCall, object : FuturaeCallback {
-                                                override fun failure(throwable: Throwable?) {
-                                                    showDialog("Error", "Could not handle URI call", "Ok", { })
-                                                }
-
-                                                override fun success() {
-                                                    showDialog("Success", "Successfully approved", "Ok", { })
-                                                }
-                                            })
-                                        },
-                                        "Cancel",
-                                        { })
-                                } else {
-                                    FuturaeSDK.getClient().handleUri(
-                                        uriCall,
-                                        object : FuturaeCallback {
-                                            override fun success() {
-                                                Toast.makeText(
-                                                    this@FuturaeActivity,
-                                                    "Approved",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-
-                                            override fun failure(throwable: Throwable?) {
-                                                Timber.e(throwable)
-                                            }
-
-                                        }
-                                    )
-                                }
-
-                            }
-
-                            override fun failure(throwable: Throwable?) {
-                                Timber.e(throwable)
-                            }
-                        })
                 } else {
-                    showDialog("Error", "Uri did not contain userId and/or session token", "Ok", { })
+                    lifecycleScope.launch {
+                        FuturaeSDK.client.operationsApi.handleUri(uriCall).await()
+                        showToast("URI handled")
+                    }
                 }
-            } else {
-                showDialog("Error", "Could not handle URI call", "Ok", { })
+            } catch (t: FTException) {
+                showErrorAlert("URI Error", t)
             }
         }
         pendingUri = null
@@ -264,7 +244,8 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, intentFilter)
+        LocalBroadcastManager.getInstance(this)
+            .registerReceiver(broadcastReceiver, intentFilter)
     }
 
     override fun onPause() {
@@ -273,77 +254,53 @@ abstract class FuturaeActivity : AppCompatActivity() {
     }
 
     protected fun onUnenroll(userId: String, deviceId: String) {
-        FuturaeSDK.getClient().getAccountByUserIdAndDeviceId(userId, deviceId)?.let {
-            FuturaeSDK.getClient().deleteAccount(it.userId)
+        FuturaeSDK.client.accountApi.getAccount(
+            AccountQuery.WhereUserIdAndDevice(userId, deviceId)
+        )?.let {
+            FuturaeSDK.client.accountApi.logoutAccountOffline(userId)
         }
     }
 
-    protected fun rejectAuth(session: ApproveSession) {
-        var adaptiveCollection: AdaptiveCollection? = null
-        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
-            showLoading()
-            // Calling this to register callback for the collection. For debugging purposes
-            AdaptiveSDK.requestAdaptiveCollection(
-                object : UpdateCallback {
-                    override fun onCollectionDataUpdated(data: AdaptiveCollection) {
-                        adaptiveCollection = data
-                    }
-                },
-                object : CompletionCallback {
-                    override fun onCollectionCompleted(data: AdaptiveCollection) {
-                        adaptiveCollection = data
-                    }
-                },
-                false
-            )
+    protected fun rejectAuth(session: ApproveSession) = lifecycleScope.launch {
+        val userIdInSession = session.userId
+        if (userIdInSession == null) {
+            showAlertOnUIThread("API Error", "ApproveSession is incomplete")
+            return@launch
         }
-        FuturaeSdkWrapper.client
-            .sessionInfoById(
-                session.userId,
-                session.sessionId,
-                object : FuturaeResultCallback<SessionInfo> {
-                    override fun success(result: SessionInfo?) {
-                        val sessionInfo = result ?: return
-                        sessionInfo.userId?.let {
-                            FuturaeSDK.getClient().rejectAuth(
-                                it,
-                                sessionInfo.sessionId,
-                                false,
-                                object : FuturaeCallback {
 
-                                    override fun success() {
-                                        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
-                                            hideLoading()
-                                            showAdaptiveAuthDialog(adaptiveCollection!!)
-                                        } else {
-                                            Toast.makeText(
-                                                this@FuturaeActivity,
-                                                "Rejected",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    }
+        val sessionInfoResult = try {
+            FuturaeSDK.client.sessionApi.getSessionInfo(
+                SessionInfoQuery(
+                    ById(session.sessionId),
+                    userIdInSession,
+                )
+            ).await()
+        } catch (t: Throwable) {
+            Timber.e(t)
+            showAlertOnUIThread(
+                "Session Api Error",
+                "Error fetching session: \n" + t.message
+            )
+            return@launch
+        }
 
-                                    override fun failure(throwable: Throwable?) {
-                                        val throwable = throwable ?: return
-                                        Timber.e(throwable)
-                                        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
-                                            hideLoading()
-                                            showAdaptiveAuthDialog(adaptiveCollection!!, throwable)
-                                        } else {
-                                            showErrorAlert("API Error", throwable)
-                                        }
-                                    }
-                                }, sessionInfo.approveInfo
-                            )
-                        } ?: showAlert("SDK Error", "Session info doesn't contain a userId.")
-                    }
+        try {
+            val rejectBuilder = RejectParameters.Builder(
+                SessionId(userIdInSession, session.sessionId)
+            )
+            sessionInfoResult.approveInfo?.let {
+                rejectBuilder.setExtraInfo(it)
+            }
 
-                    override fun failure(throwable: Throwable?) {
-                        hideLoading()
-                        throwable?.let { showErrorAlert("API Error", it ) }
-                    }
-                })
+            FuturaeSDK.client.authApi.reject(
+                rejectBuilder.build()
+            ).await()
+        } catch (t: Throwable) {
+            Timber.e(t)
+            showAlertOnUIThread("Auth Error", "Error rejecting session: " + t.message)
+            return@launch
+        }
+        showToast("Rejected")
     }
 
     private fun showAlertOnUIThread(title: String, message: String) {
@@ -353,50 +310,54 @@ abstract class FuturaeActivity : AppCompatActivity() {
     protected fun approveAuth(session: ApproveSession) = lifecycleScope.launch {
         val userIdInSession = session.userId
         if (userIdInSession == null) {
-            showAlertOnUIThread("API Error", "ApproveSession is incomplete" )
+            showAlertOnUIThread("API Error", "ApproveSession is incomplete")
             return@launch
         }
 
         val sessionInfoResult = try {
-            FuturaeSdkWrapper.coroutines.sessionInfoById(
-                session.userId,
-                session.sessionId
-            ).getOrThrow()
+            FuturaeSDK.client.sessionApi.getSessionInfo(
+                SessionInfoQuery(
+                    ById(session.sessionId),
+                    userIdInSession,
+                )
+            ).await()
         } catch (t: Throwable) {
             Timber.e(t)
             showAlertOnUIThread("API Error", "Error: \n" + t.message)
             return@launch
         }
 
-        val userMultinumberChallengeInputOrNull = sessionInfoResult.multiNumberedChallenge?.let {
-            getMultiEnrollResponseViaDialog(it.map { number -> number.toString() })
-        }
-
-        try {
-            FuturaeSdkWrapper.coroutines.approveAuth(
-                userIdInSession,
-                session.sessionId,
-                sessionInfoResult.approveInfo,
-                userMultinumberChallengeInputOrNull
-            )
-        } catch (t: Throwable) {
-            Timber.e(t)
-
-            withContext(Dispatchers.Main) {
-                showAlert("API Error", "Error: \n" + t.message)
+        val userMultinumberChallengeInputOrNull =
+            sessionInfoResult.multiNumberedChallenge?.let {
+                getMultiEnrollResponseViaDialog(it.map { number -> number.toString() })
             }
 
+        try {
+            val transactionBuilder = ApproveParameters.Builder(
+                SessionId(userIdInSession, session.sessionId)
+            )
+            userMultinumberChallengeInputOrNull?.let {
+                transactionBuilder.setMultiNumberedChallengeChoice(it)
+            }
+            sessionInfoResult.approveInfo?.let {
+                transactionBuilder.setExtraInfo(it)
+            }
+            FuturaeSDK.client.authApi.approve(
+                transactionBuilder.build()
+            ).await()
+        } catch (t: FTException) {
+            Timber.e(t)
+            showAlertOnUIThread("Auth Error", "Error approving session: " + t.message)
             return@launch
         }
 
-        showApprovedToast()
+        showToast("Approved")
     }
 
-    private suspend fun showApprovedToast()
-        = withContext(Dispatchers.Main)  {
+    private suspend fun showToast(msg: String) = withContext(Dispatchers.Main) {
         Toast.makeText(
             this@FuturaeActivity,
-            "Approved",
+            msg,
             Toast.LENGTH_SHORT
         ).show()
     }
@@ -406,42 +367,32 @@ abstract class FuturaeActivity : AppCompatActivity() {
     ): Int = withContext(Dispatchers.Main) {
         return@withContext suspendCoroutine { continuation ->
             val alertDialog = AlertDialog.Builder(this@FuturaeActivity)
-                    .setItems(items.toTypedArray()) { _, itemIndex ->
-                        val selectedItem = items.getOrNull(itemIndex)
-                        if (selectedItem == null) {
-                            continuation.resumeWithException(
-                                IllegalStateException("UI Error: nonexistent item selected")
-                            )
-                            return@setItems
-                        }
-                        continuation.resume(
-                            selectedItem.toInt()
-                        )
-                    }
-                    .setCancelable(true)
-                    .setTitle("Select a number you see on the website")
-                    .setOnCancelListener {
+                .setItems(items.toTypedArray()) { _, itemIndex ->
+                    val selectedItem = items.getOrNull(itemIndex)
+                    if (selectedItem == null) {
                         continuation.resumeWithException(
-                            IllegalArgumentException("Multi numbered challenge not provided")
+                            IllegalStateException("UI Error: nonexistent item selected")
                         )
+                        return@setItems
                     }
-                    .create()
+                    continuation.resume(
+                        selectedItem.toInt()
+                    )
+                }
+                .setCancelable(true)
+                .setTitle("Select a number you see on the website")
+                .setOnCancelListener {
+                    continuation.resumeWithException(
+                        IllegalArgumentException("Multi numbered challenge not provided")
+                    )
+                }
+                .create()
 
             alertDialog.show()
         }
     }
 
+
     abstract fun showLoading()
     abstract fun hideLoading()
-
-    fun showAdaptiveAuthDialog(adaptiveCollection: AdaptiveCollection, error: Throwable? = null) {
-        showDialog(
-            if (error == null) "Auth success" else "Auth failed",
-            if (error == null) "View your adaptive collection details?" else "Request failed with message:\n${error.message}\n View your adaptive collection details?",
-            "View",
-            {
-                startActivity(AdaptiveCollectionDetailsActivity.newIntent(this, adaptiveCollection))
-            }
-        )
-    }
 }

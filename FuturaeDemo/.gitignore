@@ -3,3 +3,5 @@
 .idea/
 .gradle/
 build/
+app/google-services.json
+app/src/main/res/values/futurae.xml

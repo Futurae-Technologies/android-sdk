@@ -5,7 +5,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.futurae.futuraedemo.R
 import com.futurae.futuraedemo.ui.fragment.FragmentConfiguration
-import com.futurae.sdk.SDKConfiguration
+import com.futurae.sdk.public_api.common.SDKConfiguration
 
 const val EXTRA_CONFIG = "EXTRA_CONFIG"
 

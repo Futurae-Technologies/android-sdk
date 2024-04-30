@@ -9,22 +9,26 @@ import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
-import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.R
 import com.futurae.futuraedemo.databinding.ActivityFragmentContainerBinding
 import com.futurae.futuraedemo.ui.fragment.FragmentConfiguration
 import com.futurae.futuraedemo.ui.fragment.FragmentMain
 import com.futurae.futuraedemo.ui.fragment.FragmentSettings
+import com.futurae.futuraedemo.ui.qr_push_action.QRCodeFlowOpenCoordinator
+import com.futurae.futuraedemo.ui.qr_push_action.QRCodeRequestedActionHandler
 import com.futurae.futuraedemo.util.LocalStorage
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.sdk.Callback
-import com.futurae.sdk.SDKConfiguration
-import com.futurae.sdk.exception.LockCorruptedStateException
-import com.futurae.sdk.exception.LockInvalidConfigurationException
-import com.futurae.sdk.exception.LockMechanismUnavailableException
-import com.futurae.sdk.exception.LockUnexpectedException
+import com.futurae.sdk.FuturaeSDK
+import com.futurae.sdk.public_api.common.SDKConfiguration
+import com.futurae.sdk.public_api.exception.FTCorruptedStateException
+import com.futurae.sdk.public_api.exception.FTInvalidStateException
+import com.futurae.sdk.public_api.exception.FTKeyNotFoundException
+import com.futurae.sdk.public_api.exception.FTKeystoreOperationException
+import com.futurae.sdk.public_api.exception.FTLockInvalidConfigurationException
+import com.futurae.sdk.public_api.exception.FTLockMechanismUnavailableException
 
 
 class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, FragmentSettings.Listener {
@@ -53,14 +57,44 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
         binding = ActivityFragmentContainerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        if (localStorage.hasExistingConfiguration()) {
-            // show operations ui for configuration
-            onConfigurationSelected(localStorage.getPersistedSDKConfig())
+        if (FuturaeSDK.isSDKInitialized) {
+            onSDKLaunched(localStorage.getPersistedSDKConfig())
         } else {
-            // show select configuration ui
-            showSelectConfigurationUI()
+            if (localStorage.hasExistingConfiguration()) {
+                // show operations ui for configuration
+                onConfigurationSelected(localStorage.getPersistedSDKConfig())
+            } else {
+                // show select configuration ui
+                showSelectConfigurationUI()
+            }
         }
+
         checkPermissions()
+
+        // handling when activity is started via QR intent
+        if (isQrCodeScannerLaunchIntent(intent)) {
+            handleLaunchQRCodeIntent()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+
+        // handling when activity was launched when intent came in
+        if (isQrCodeScannerLaunchIntent(intent)) {
+            handleLaunchQRCodeIntent()
+        }
+    }
+
+    private fun isQrCodeScannerLaunchIntent(intent: Intent?): Boolean {
+        return intent != null && intent.getBooleanExtra(
+            QRCodeRequestedActionHandler.CLIENT_APP_QR_ACTION_BOOLEAN_EXTRA,
+            false
+        )
+    }
+
+    private fun handleLaunchQRCodeIntent() {
+        QRCodeFlowOpenCoordinator.instance.notifyShouldOpenQRCode()
     }
 
     private fun showSelectConfigurationUI() {
@@ -80,23 +114,31 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
 
     override fun onConfigurationSelected(sdkConfiguration: SDKConfiguration) {
         try {
-            FuturaeSdkWrapper.sdk.launch(
+            FuturaeSDK.launch(
                 application,
                 sdkConfiguration
             )
             onSDKLaunched(sdkConfiguration)
         } catch (e: Exception) {
             when (e) {
-                is IllegalStateException -> showErrorAlert("SDK Already initialized", e)
+                is FTInvalidStateException -> showErrorAlert("SDK Already initialized", e)
                 // Indicates that provided SDK configuration is invalid
-                is LockInvalidConfigurationException -> showErrorAlert("SDK Configuration error", e)
+                is FTLockInvalidConfigurationException -> showErrorAlert(
+                    "SDK Configuration error",
+                    e
+                )
                 // Indicates that provided SDK configuration is valid but cannot be supported on this device
-                is LockMechanismUnavailableException -> showErrorAlert("SDK Configuration unsupported on device", e)
+                is FTLockMechanismUnavailableException -> showErrorAlert(
+                    "SDK Configuration unsupported on device",
+                    e
+                )
                 // Indicates that an SDK cryptographic operation failed
-                is LockUnexpectedException -> showErrorAlert("SDK Cryptography Error", e)
+                is FTKeystoreOperationException -> showErrorAlert("SDK Cryptography Error", e)
+                // Indicates that cryptographic keys are missing.
+                is FTKeyNotFoundException -> showErrorAlert("SDK Missing Key", e)
                 // Indicates that the SDK is in a corrupted state and should attempt to recover
-                is LockCorruptedStateException -> {
-                    FuturaeSdkWrapper.sdk.launchAccountRecovery(
+                is FTCorruptedStateException -> {
+                    FuturaeSDK.launchAccountRecovery(
                         application,
                         sdkConfiguration,
                         object : Callback<Unit> {

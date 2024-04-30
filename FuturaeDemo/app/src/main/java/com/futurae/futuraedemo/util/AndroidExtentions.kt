@@ -5,7 +5,7 @@ import android.content.Context
 import android.os.Looper
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
-import com.futurae.sdk.approve.ApproveSession
+import com.futurae.sdk.public_api.session.model.ApproveSession
 import timber.log.Timber
 
 fun Context.showDialog(

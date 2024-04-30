@@ -8,7 +8,7 @@ import androidx.fragment.app.Fragment
 import com.futurae.futuraedemo.R
 import com.futurae.futuraedemo.databinding.FragmentSdkMainBinding
 import com.futurae.futuraedemo.util.LocalStorage
-import com.futurae.sdk.LockConfigurationType
+import com.futurae.sdk.public_api.common.LockConfigurationType
 
 class FragmentMain : Fragment() {
 

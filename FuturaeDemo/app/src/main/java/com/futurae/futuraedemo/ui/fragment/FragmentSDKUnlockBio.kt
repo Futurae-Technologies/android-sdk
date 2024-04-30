@@ -4,14 +4,17 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.futurae.futuraedemo.FuturaeSdkWrapper
+import android.widget.TextView
+import androidx.lifecycle.lifecycleScope
 import com.futurae.futuraedemo.databinding.FragmentSdkUnlockBioBinding
 import com.futurae.futuraedemo.util.showErrorAlert
-import com.futurae.sdk.Callback
-import com.futurae.sdk.model.UserPresenceVerification
+import com.futurae.sdk.FuturaeSDK
+import com.futurae.sdk.public_api.common.model.PresentationConfigurationForBiometricsPrompt
+import com.futurae.sdk.public_api.lock.model.WithBiometrics
 import com.google.android.material.button.MaterialButton
+import kotlinx.coroutines.launch
 
-class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
+class FragmentSDKUnlockBio : FragmentSDKOperations() {
 
     private lateinit var binding: FragmentSdkUnlockBioBinding
 
@@ -24,32 +27,34 @@ class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
         return binding.root
     }
 
+    override fun timeLeftView(): TextView = binding.textTimerValue
+
+    override fun sdkStatus(): TextView = binding.textStatusValue
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.buttonUnlock.setOnClickListener {
-            FuturaeSdkWrapper.client.unlockWithBiometrics(
-                requireActivity(),
-                "Unlock SDK",
-                "Authenticate with biometrics",
-                "Authentication is required to unlock SDK operations",
-                "cancel",
-                object : Callback<UserPresenceVerification> {
-                    override fun onSuccess(result: UserPresenceVerification) {
-                        binding.textStatusValue.text = "Unlocked"
-                        onUnlocked(binding.textTimerValue, binding.textStatusValue)
-                    }
-
-                    override fun onError(throwable: Throwable) {
-                        onLocked(binding.textTimerValue, binding.textStatusValue)
-                        showErrorAlert("SDK Unlock", throwable)
-                    }
-
+            lifecycleScope.launch {
+                try {
+                    FuturaeSDK.client.lockApi.unlock(
+                        WithBiometrics(
+                            PresentationConfigurationForBiometricsPrompt(
+                                requireActivity(),
+                                "Unlock SDK",
+                                "Authenticate with biometrics",
+                                "Authentication is required to unlock SDK operations",
+                                "cancel",
+                            ),
+                        ),
+                        shouldWaitForSDKSync = true
+                    ).await()
+                } catch (t: Throwable) {
+                    showErrorAlert("SDK Unlock", t)
                 }
-            )
+            }
         }
         binding.buttonLock.setOnClickListener {
-            FuturaeSdkWrapper.client.lock()
-            onLocked(binding.textTimerValue, binding.textStatusValue)
+            FuturaeSDK.client.lockApi.lock()
         }
         binding.buttonEnroll.setOnClickListener {
             scanQRCode()
@@ -75,15 +80,14 @@ class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
         binding.buttonHotp.setOnClickListener {
             onHotpAuth()
         }
-        binding.buttonAccStatus.setOnClickListener {
-            getAccountsStatus()
-        }
-        binding.unlockMethodsValue.text = FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
+        binding.unlockMethodsValue.text =
+            FuturaeSDK.client.lockApi.getActiveUnlockMethods().joinToString()
     }
 
     override fun toggleAdaptiveButton(): MaterialButton = binding.buttonAdaptive
 
-    override fun viewAdaptiveCollectionsButton(): MaterialButton = binding.buttonViewAdaptiveCollections
+    override fun viewAdaptiveCollectionsButton(): MaterialButton =
+        binding.buttonViewAdaptiveCollections
 
     override fun setAdaptiveThreshold(): MaterialButton = binding.buttonConfigureAdaptiveTime
 

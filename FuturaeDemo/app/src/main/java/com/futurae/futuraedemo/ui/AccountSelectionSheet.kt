@@ -7,11 +7,11 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.R
 import com.futurae.futuraedemo.databinding.BottomSheetUserListBinding
 import com.futurae.futuraedemo.databinding.UserListItemBinding
-import com.futurae.sdk.model.FTAccount
+import com.futurae.sdk.FuturaeSDK
+import com.futurae.sdk.public_api.common.model.FTAccount
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 
@@ -30,7 +30,7 @@ class AccountSelectionSheet : BottomSheetDialogFragment() {
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = UserListAdapter(
-                FuturaeSdkWrapper.sdk.getClient().accounts
+                FuturaeSDK.client.accountApi.getActiveAccounts()
             ) {
                 listener?.onAccountSelected(it)
                 dismiss()

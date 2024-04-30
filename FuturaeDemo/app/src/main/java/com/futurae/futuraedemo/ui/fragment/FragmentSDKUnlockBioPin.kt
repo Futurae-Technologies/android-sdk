@@ -5,30 +5,41 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import com.futurae.futuraedemo.FuturaeSdkWrapper
+import androidx.lifecycle.lifecycleScope
 import com.futurae.futuraedemo.databinding.FragmentSdkUnlockBioPinBinding
 import com.futurae.futuraedemo.ui.activity.FTRQRCodeActivity
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
-import com.futurae.sdk.Callback
-import com.futurae.sdk.MalformedQRCodeException
-import com.futurae.sdk.exception.LockOperationIsLockedException
-import com.futurae.sdk.model.ApproveInfo
-import com.futurae.sdk.model.CurrentTotp
-import com.futurae.sdk.model.UserPresenceVerification
-import com.futurae.sdk.utils.QRCodeUtils
+import com.futurae.futuraedemo.util.showInputDialog
+import com.futurae.sdk.FuturaeSDK
+import com.futurae.sdk.public_api.account.model.ActivationCode
+import com.futurae.sdk.public_api.account.model.EnrollAccountAndSetupSDKPin
+import com.futurae.sdk.public_api.account.model.EnrollmentParams
+import com.futurae.sdk.public_api.auth.model.Biometrics
+import com.futurae.sdk.public_api.auth.model.PinCode
+import com.futurae.sdk.public_api.auth.model.SDKAuthMode
+import com.futurae.sdk.public_api.common.model.PresentationConfigurationForBiometricsPrompt
+import com.futurae.sdk.public_api.exception.FTMalformedQRCodeException
+import com.futurae.sdk.public_api.exception.FTUnlockRequiredException
+import com.futurae.sdk.public_api.lock.model.WithBiometrics
+import com.futurae.sdk.public_api.lock.model.WithSDKPin
+import com.futurae.sdk.public_api.session.model.ApproveInfo
+import com.futurae.sdk.utils.FTQRCodeUtils
 import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.material.button.MaterialButton
+import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
  * This is the most complex UI code, because it doesn't use FragmentSDKOperations for scanning QR codes.
  * This Fragment has to manage the state of scanned QR codes, provided PIN and current SDK operation flow.
  */
-class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
+class FragmentSDKUnlockBioPin : FragmentSDKOperations() {
 
     private lateinit var binding: FragmentSdkUnlockBioPinBinding
 
@@ -46,31 +57,27 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                 (result.data?.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
                     when (currentRequest) {
                         REQUEST_ENROLL_WITH_PIN -> {
-                            if (QRCodeUtils.getQrcodeType(qrcode.rawValue) == QRCodeUtils.QRType.Enroll) {
+                            if (FTQRCodeUtils.getQrcodeType(qrcode.rawValue) == FTQRCodeUtils.QRType.Enroll) {
                                 getPinWithCallback {
-                                    FuturaeSdkWrapper.client.enrollAndSetupSDKPin(
-                                        qrcode.rawValue,
-                                        it,
-                                        object : Callback<Unit> {
-                                            override fun onSuccess(result: Unit) {
-                                                showAlert("SDK Unlock", "Enrollment successful")
-                                                onUnlocked(
-                                                    binding.textTimerValue,
-                                                    binding.textStatusValue
-                                                )
-                                                currentRequest = 0
-                                            }
-
-                                            override fun onError(throwable: Throwable) {
-                                                showErrorAlert("SDK Unlock", throwable)
-                                                onLocked(
-                                                    binding.textTimerValue,
-                                                    binding.textStatusValue
-                                                )
+                                    requireContext().showInputDialog("Flow Binding Token") { token ->
+                                        lifecycleScope.launch {
+                                            try {
+                                                FuturaeSDK.client.accountApi.enrollAccount(
+                                                    EnrollmentParams(
+                                                        inputCode = ActivationCode(qrcode.rawValue),
+                                                        enrollmentUseCase = EnrollAccountAndSetupSDKPin(
+                                                            it
+                                                        ),
+                                                        token
+                                                    )
+                                                ).await()
+                                            } catch (t: Throwable) {
+                                                showErrorAlert("Enroll API Erro", t)
+                                            } finally {
                                                 currentRequest = 0
                                             }
                                         }
-                                    )
+                                    }
                                 }
                             } else {
                                 showErrorAlert(
@@ -82,8 +89,8 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                         }
 
                         REQUEST_QR_OFFLINE_WITH_PIN -> {
-                            if (QRCodeUtils.getQrcodeType(qrcode.rawValue) == QRCodeUtils.QRType.Offline) {
-                                val accounts = FuturaeSdkWrapper.client.accounts
+                            if (FTQRCodeUtils.getQrcodeType(qrcode.rawValue) == FTQRCodeUtils.QRType.Offline) {
+                                val accounts = FuturaeSDK.client.accountApi.getActiveAccounts()
                                 if (accounts.isEmpty()) {
                                     showAlert("SDK Unlock", "No account enrolled")
                                     currentRequest = 0
@@ -91,8 +98,11 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                                     getPinWithCallback {
                                         try {
                                             val extras: List<ApproveInfo>? = try {
-                                                QRCodeUtils.getExtraInfoFromOfflineQrcode(qrcode.rawValue)
-                                            } catch (e: MalformedQRCodeException) {
+                                                FuturaeSDK.client.sessionApi.extractQRCodeExtraInfo(
+                                                    qrcode.rawValue
+                                                )
+                                            } catch (e: FTMalformedQRCodeException) {
+                                                Timber.e(e)
                                                 showErrorAlert("SDK Unlock", e)
                                                 currentRequest = 0
                                                 null
@@ -101,18 +111,21 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                                             if (extras != null) {
                                                 sb.append("\n")
                                                 for (info in extras) {
-                                                    sb.append(info.key).append(": ").append(info.value)
+                                                    sb.append(info.key).append(": ")
+                                                        .append(info.value)
                                                         .append("\n")
                                                 }
                                             }
                                             showDialog("Approve", "Request Info: $sb", "Approve", {
                                                 val verificationSignature = try {
-                                                    FuturaeSdkWrapper.client
-                                                        .computeVerificationCodeFromQrcode(
-                                                            qrcode.rawValue,
-                                                            it
+                                                    FuturaeSDK.client.authApi.getOfflineQRVerificationCode(
+                                                        qrcode.rawValue,
+                                                        SDKAuthMode.PinOrBiometrics(
+                                                            PinCode(it)
                                                         )
+                                                    )
                                                 } catch (e: Exception) {
+                                                    Timber.e(e)
                                                     showErrorAlert("SDK Unlock", e)
                                                 }
                                                 currentRequest = 0
@@ -123,7 +136,8 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                                             }, " Deny", {
                                                 //Nothing
                                             })
-                                        } catch (e: LockOperationIsLockedException) {
+                                        } catch (e: FTUnlockRequiredException) {
+                                            Timber.e(e)
                                             showErrorAlert("SDK Unlock", e)
                                             currentRequest = 0
                                         }
@@ -139,12 +153,11 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                         }
 
                         REQUEST_QR_OFFLINE_WITH_BIO -> {
-                            if (QRCodeUtils.getQrcodeType(qrcode.rawValue) == QRCodeUtils.QRType.Offline) {
-                                val qrCode = qrcode.rawValue
-
+                            if (FTQRCodeUtils.getQrcodeType(qrcode.rawValue) == FTQRCodeUtils.QRType.Offline) {
                                 val extras: List<ApproveInfo>? = try {
-                                    QRCodeUtils.getExtraInfoFromOfflineQrcode(qrCode)
-                                } catch (e: MalformedQRCodeException) {
+                                    FuturaeSDK.client.sessionApi.extractQRCodeExtraInfo(qrcode.rawValue)
+                                } catch (e: FTMalformedQRCodeException) {
+                                    Timber.e(e)
                                     showErrorAlert("SDK Unlock", e)
                                     currentRequest = 0
                                     null
@@ -164,39 +177,31 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                                     "Request Info: ${sb}",
                                     "Approve with biometrics",
                                     {
-                                        FuturaeSdkWrapper.client
-                                            .computeVerificationCodeFromQrcodeWithBiometrics(
-                                                qrCode,
-                                                requireActivity(),
-                                                "Bio auth",
-                                                "Authenticate",
-                                                "Authenticate to unlock PIN",
-                                                "cancel",
-                                                object : Callback<String> {
-                                                    override fun onSuccess(result: String) {
-                                                        showDialog(
-                                                            "Approve",
-                                                            "Request Info: ${sb}",
-                                                            "Approve",
-                                                            {
-                                                                showAlert(
-                                                                    "Confirm Transaction",
-                                                                    "To Approve the transaction, enter: $result in the browser"
+                                        lifecycleScope.launch {
+                                            try {
+                                                val code =
+                                                    FuturaeSDK.client.authApi.getOfflineQRVerificationCode(
+                                                        qrcode.rawValue,
+                                                        SDKAuthMode.PinOrBiometrics(
+                                                            Biometrics(
+                                                                PresentationConfigurationForBiometricsPrompt(
+                                                                    requireActivity(),
+                                                                    "Bio auth",
+                                                                    "Authenticate",
+                                                                    "Authenticate to unlock PIN",
+                                                                    "cancel",
                                                                 )
-                                                            },
-                                                            " Deny",
-                                                            {
-                                                                //Nothing
-                                                            })
-                                                        currentRequest = 0
-                                                    }
-
-                                                    override fun onError(throwable: Throwable) {
-                                                        showErrorAlert("Error", throwable)
-                                                        currentRequest = 0
-                                                    }
-                                                }
-                                            )
+                                                            )
+                                                        )
+                                                    )
+                                                showAlert(
+                                                    "Confirm Transaction",
+                                                    "To Approve the transaction, enter: $code in the browser"
+                                                )
+                                            } catch (t: Throwable) {
+                                                showErrorAlert("Auth API error", t)
+                                            }
+                                        }
                                     })
                             } else {
                                 showErrorAlert(
@@ -206,6 +211,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                                 currentRequest = 0
                             }
                         }
+
                         else -> {
                             throw IllegalStateException("Unknown use case for QR: ${currentRequest}")
                         }
@@ -227,57 +233,52 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.buttonUnlockWithBiometrics.setOnClickListener {
-            FuturaeSdkWrapper.client.unlockWithBiometrics(
-                requireActivity(),
-                "Unlock SDK",
-                "Authenticate with biometrics",
-                "Authentication is required to unlock SDK operations",
-                "cancel",
-                object : Callback<UserPresenceVerification> {
-                    override fun onSuccess(result: UserPresenceVerification) {
-                        onUnlocked(binding.textTimerValue, binding.textStatusValue)
-                    }
-
-                    override fun onError(throwable: Throwable) {
-                        showErrorAlert("SDK Unlock", throwable)
-                    }
+            lifecycleScope.launch {
+                try {
+                    FuturaeSDK.client.lockApi.unlock(
+                        WithBiometrics(
+                            PresentationConfigurationForBiometricsPrompt(
+                                requireActivity(),
+                                "Unlock SDK",
+                                "Authenticate with biometrics",
+                                "Authentication is required to unlock SDK operations",
+                                "cancel",
+                            )
+                        )
+                    ).await()
+                } catch (t: Throwable) {
+                    showErrorAlert("Lock API Error", t)
                 }
-            )
+            }
         }
         binding.buttonLock.setOnClickListener {
-            FuturaeSdkWrapper.client.lock()
-            onLocked(binding.textTimerValue, binding.textStatusValue)
+            FuturaeSDK.client.lockApi.lock()
         }
         binding.buttonChangePin.setOnClickListener {
             getPinWithCallback {
-                FuturaeSdkWrapper.client.changeSDKPin(it, object : Callback<Unit> {
-                    override fun onSuccess(result: Unit) {
-                        Toast.makeText(
-                            requireContext(),
-                            "SDK PIN changed",
-                            Toast.LENGTH_LONG
-                        ).show()
+                lifecycleScope.launch {
+                    try {
+                        FuturaeSDK.client.lockApi.changeSDKPin(it).await()
+                    } catch (t: Throwable) {
+                        showErrorAlert("Lock API Error", t)
+                    } finally {
                         currentRequest = 0
                     }
-
-                    override fun onError(throwable: Throwable) {
-                        showErrorAlert("SDK Unlock", throwable)
-                    }
-                })
+                }
             }
         }
         binding.buttonUnlockWithPin.setOnClickListener {
             getPinWithCallback {
-                FuturaeSdkWrapper.client.unlockWithSDKPin(it, object : Callback<UserPresenceVerification> {
-                    override fun onSuccess(result: UserPresenceVerification) {
-                        onUnlocked(binding.textTimerValue, binding.textStatusValue)
+                lifecycleScope.launch {
+                    try {
+                        FuturaeSDK.client.lockApi.unlock(
+                            WithSDKPin(it),
+                            shouldWaitForSDKSync = true
+                        ).await()
+                    } catch (t: Throwable) {
+                        showErrorAlert("Lock API Error", t)
                     }
-
-                    override fun onError(throwable: Throwable) {
-                        onLocked(binding.textTimerValue, binding.textStatusValue)
-                        showErrorAlert("SDK Unlock", throwable)
-                    }
-                })
+                }
             }
         }
         binding.buttonEnroll.setOnClickListener {
@@ -305,20 +306,26 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
         }
         binding.buttonTotpOffline.setOnClickListener {
             getPinWithCallback {
-                val accounts = FuturaeSdkWrapper.client.accounts
+                val accounts = FuturaeSDK.client.accountApi.getActiveAccounts()
                 if (accounts.isEmpty()) {
                     showAlert("SDK Unlock", "No account enrolled")
                 } else {
-                    val account = accounts[0]
-                    try {
-                        val totp =
-                            FuturaeSdkWrapper.client.nextTotp(account.userId, it)
-                        showAlert(
-                            "TOTP",
-                            "Code: ${totp.passcode}\nRemaining seconds: ${totp.remainingSecs}"
-                        )
-                    } catch (e: LockOperationIsLockedException) {
-                        showErrorAlert("SDK Unlock", e)
+                    lifecycleScope.launch {
+                        val account = accounts[0]
+                        try {
+                            val totp = FuturaeSDK.client.authApi.getTOTP(
+                                account.userId,
+                                SDKAuthMode.PinOrBiometrics(
+                                    PinCode(it)
+                                )
+                            ).await()
+                            showAlert(
+                                "TOTP",
+                                "Code: ${totp.passcode}\nRemaining seconds: ${totp.remainingSeconds}"
+                            )
+                        } catch (e: FTUnlockRequiredException) {
+                            showErrorAlert("SDK Unlock", e)
+                        }
                     }
                 }
             }
@@ -330,84 +337,78 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
             )
         }
         binding.buttonActivateBiometrics.setOnClickListener {
-            FuturaeSdkWrapper.client.activateBiometrics(
-                requireActivity(),
-                "Unlock SDK",
-                "Activate biometrics",
-                "Authenticate to enable biometric authentication unlocking",
-                "cancel",
-                object : Callback<Unit> {
-                    override fun onSuccess(result: Unit) {
-                        showAlert("SDK Unlock", "Biometric auth activated")
-                        binding.unlockMethodsValue.text =
-                            FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
-                    }
-
-                    override fun onError(throwable: Throwable) {
-                        showErrorAlert("SDK Unlock", throwable)
-                    }
-
+            lifecycleScope.launch {
+                try {
+                    FuturaeSDK.client.lockApi.activateBiometrics(
+                        PresentationConfigurationForBiometricsPrompt(
+                            requireActivity(),
+                            "Unlock SDK",
+                            "Activate biometrics",
+                            "Authenticate to enable biometric authentication unlocking",
+                            "cancel",
+                        )
+                    ).await()
+                    binding.unlockMethodsValue.text =
+                        FuturaeSDK.client.lockApi.getActiveUnlockMethods().joinToString()
+                } catch (t: Throwable) {
+                    showErrorAlert("Lock API Error", t)
                 }
-            )
+            }
         }
         binding.buttonDeactivateBiometrics.setOnClickListener {
-            FuturaeSdkWrapper.client.deactivateBiometrics(object : Callback<Unit> {
-                override fun onSuccess(result: Unit) {
-                    showAlert("SDK Unlock", "Deactivated biometric authentication")
+            lifecycleScope.launch {
+                try {
+                    FuturaeSDK.client.lockApi.deactivateBiometrics().await()
                     binding.unlockMethodsValue.text =
-                        FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
+                        FuturaeSDK.client.lockApi.getActiveUnlockMethods().joinToString()
+                } catch (t: Throwable) {
+                    showErrorAlert("Lock API Error", t)
                 }
-
-                override fun onError(throwable: Throwable) {
-                    showErrorAlert("SDK Unlock", throwable)
-                }
-            })
+            }
         }
-        binding.unlockMethodsValue.text = FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
+        binding.unlockMethodsValue.text =
+            FuturaeSDK.client.lockApi.getActiveUnlockMethods().joinToString()
         binding.buttonMigrationExecute.setOnClickListener {
             attemptRestoreAccounts()
         }
         binding.buttonUnlockMethods.setOnClickListener {
             showAlert(
                 "SDK Unlock",
-                "Active Unlock methods:\n" + FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
+                "Active Unlock methods:\n" + FuturaeSDK.client.lockApi.getActiveUnlockMethods()
+                    .joinToString()
             )
             binding.unlockMethodsValue.text =
-                FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
+                FuturaeSDK.client.lockApi.getActiveUnlockMethods().joinToString()
         }
         binding.buttonTotpOfflineBio.setOnClickListener {
-            val accounts = FuturaeSdkWrapper.client.accounts
+            val accounts = FuturaeSDK.client.accountApi.getActiveAccounts()
             if (accounts.isEmpty()) {
                 showAlert("SDK Unlock", "No account enrolled")
             } else {
                 val account = accounts[0]
-                try {
-                    FuturaeSdkWrapper.client.nextTotpWithBiometrics(
-                        account.userId,
-                        requireActivity(),
-                        "Bio auth for TOTP",
-                        "Authenticate with biometrics",
-                        "Authenticate with biometrics to create a TOTP",
-                        "cancel",
-                        object : Callback<CurrentTotp> {
-                            override fun onSuccess(result: CurrentTotp) {
-                                showAlert(
-                                    "TOTP",
-                                    "Code: ${result.passcode}\nRemaining seconds: ${result.remainingSecs}"
+                lifecycleScope.launch {
+                    try {
+                        val totp = FuturaeSDK.client.authApi.getTOTP(
+                            account.userId,
+                            SDKAuthMode.PinOrBiometrics(
+                                Biometrics(
+                                    PresentationConfigurationForBiometricsPrompt(
+                                        requireActivity(),
+                                        "Bio auth for TOTP",
+                                        "Authenticate with biometrics",
+                                        "Authenticate with biometrics to create a TOTP",
+                                        "cancel",
+                                    )
                                 )
-                            }
-
-                            override fun onError(throwable: Throwable) {
-                                showAlert(
-                                    "TOTP Error",
-                                    "Biometric Auth failed with error: ${throwable.message}"
-                                )
-                            }
-
-                        }
-                    )
-                } catch (e: LockOperationIsLockedException) {
-                    showErrorAlert("SDK Unlock", e)
+                            )
+                        ).await()
+                        showAlert(
+                            "TOTP",
+                            "Code: ${totp.passcode}\nRemaining seconds: ${totp.remainingSeconds}"
+                        )
+                    } catch (t: Throwable) {
+                        showErrorAlert("Auth API error", t)
+                    }
                 }
             }
         }
@@ -426,13 +427,28 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
         binding.buttonAccHistory.setOnClickListener {
             getAccountHistory()
         }
+        binding.buttonCheckBioInvalidation.setOnClickListener {
+            try {
+                val haveBiometricsInvalidated = FuturaeSDK.client.lockApi.haveBiometricsChanged()
+                Toast.makeText(
+                    requireContext(),
+                    "Invalidated: ${haveBiometricsInvalidated}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } catch (t: Throwable) {
+                showErrorAlert("Lock API Error", t)
+            }
+        }
     }
 
     override fun toggleAdaptiveButton(): MaterialButton = binding.buttonAdaptive
 
-    override fun viewAdaptiveCollectionsButton(): MaterialButton = binding.buttonViewAdaptiveCollections
+    override fun viewAdaptiveCollectionsButton(): MaterialButton =
+        binding.buttonViewAdaptiveCollections
 
     override fun setAdaptiveThreshold(): MaterialButton = binding.buttonConfigureAdaptiveTime
 
     override fun serviceLogoButton(): MaterialButton = binding.buttonServiceLogo
+    override fun timeLeftView(): TextView = binding.textTimerValue
+    override fun sdkStatus(): TextView = binding.textStatusValue
 }

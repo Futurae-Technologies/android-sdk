@@ -12,51 +12,66 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.widget.AppCompatEditText
 import androidx.core.content.ContextCompat.getSystemService
-import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
-import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.R
 import com.futurae.futuraedemo.ui.AccountSelectionSheet
 import com.futurae.futuraedemo.ui.activity.ActivityAccountHistory
 import com.futurae.futuraedemo.ui.activity.AdaptiveViewerActivity
 import com.futurae.futuraedemo.ui.activity.FTRQRCodeActivity
 import com.futurae.futuraedemo.ui.activity.FuturaeActivity
+import com.futurae.futuraedemo.ui.qr_push_action.QRCodeFlowOpenCoordinator
 import com.futurae.futuraedemo.util.LocalStorage
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
+import com.futurae.futuraedemo.util.showInputDialog
 import com.futurae.futuraedemo.util.toDialogMessage
-import com.futurae.sdk.Callback
-import com.futurae.sdk.FuturaeCallback
-import com.futurae.sdk.FuturaeResultCallback
-import com.futurae.sdk.LockConfigurationType
-import com.futurae.sdk.MalformedQRCodeException
+import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.adaptive.AdaptiveSDK
-import com.futurae.sdk.approve.ApproveSession
-import com.futurae.sdk.exception.LockOperationIsLockedException
-import com.futurae.sdk.model.AccountsMigrationResource
-import com.futurae.sdk.model.AccountsStatus
-import com.futurae.sdk.model.ApproveInfo
-import com.futurae.sdk.model.MigrateableAccounts
-import com.futurae.sdk.model.SessionInfo
-import com.futurae.sdk.utils.QRCodeUtils
+import com.futurae.sdk.public_api.account.model.AccountsStatus
+import com.futurae.sdk.public_api.account.model.ActivationCode
+import com.futurae.sdk.public_api.account.model.EnrollAccount
+import com.futurae.sdk.public_api.account.model.EnrollAccountAndSetupSDKPin
+import com.futurae.sdk.public_api.account.model.EnrollmentParams
+import com.futurae.sdk.public_api.account.model.ShortActivationCode
+import com.futurae.sdk.public_api.auth.model.ApproveParameters
+import com.futurae.sdk.public_api.auth.model.OnlineQR
+import com.futurae.sdk.public_api.auth.model.RejectParameters
+import com.futurae.sdk.public_api.auth.model.SDKAuthMode
+import com.futurae.sdk.public_api.auth.model.UsernamelessQR
+import com.futurae.sdk.public_api.common.FuturaeSDKStatus
+import com.futurae.sdk.public_api.common.LockConfigurationType
+import com.futurae.sdk.public_api.common.model.FTAccount
+import com.futurae.sdk.public_api.exception.FTMalformedQRCodeException
+import com.futurae.sdk.public_api.exception.FTUnlockRequiredException
+import com.futurae.sdk.public_api.migration.model.MigrationAccount
+import com.futurae.sdk.public_api.migration.model.MigrationUseCase
+import com.futurae.sdk.public_api.session.model.ApproveInfo
+import com.futurae.sdk.public_api.session.model.ApproveSession
+import com.futurae.sdk.public_api.session.model.ByToken
+import com.futurae.sdk.public_api.session.model.SessionInfoQuery
+import com.futurae.sdk.utils.FTQRCodeUtils
 import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.slider.Slider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
  * A fragment that performs common Futurae SDK operations. The lock fragments can inherit this so they
  * can implement only the lock/unlocking flow.
  */
-abstract class FragmentSDKOperations : Fragment() {
-
+abstract class FragmentSDKOperations : BaseFragment() {
     abstract fun toggleAdaptiveButton(): MaterialButton
     abstract fun viewAdaptiveCollectionsButton(): MaterialButton
     abstract fun setAdaptiveThreshold(): MaterialButton
     abstract fun serviceLogoButton(): MaterialButton
+    abstract fun timeLeftView(): TextView
+    abstract fun sdkStatus(): TextView
 
     protected val localStorage: LocalStorage by lazy {
         LocalStorage(requireContext())
@@ -72,17 +87,18 @@ abstract class FragmentSDKOperations : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
         toggleAdaptiveButton().setOnClickListener {
-            if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
-                FuturaeSdkWrapper.sdk.disableAdaptive()
+            if (FuturaeSDK.isAdaptiveEnabled()) {
+                FuturaeSDK.disableAdaptive()
                 toggleAdaptiveButton().text = "Enable Adaptive"
             } else {
-                FuturaeSdkWrapper.sdk.enableAdaptive(requireActivity().application)
+                FuturaeSDK.enableAdaptive(requireActivity().application)
                 toggleAdaptiveButton().text = "Disable Adaptive"
             }
         }
         viewAdaptiveCollectionsButton().setOnClickListener {
-            if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
+            if (FuturaeSDK.isAdaptiveEnabled()) {
                 startActivity(
                     Intent(context, AdaptiveViewerActivity::class.java)
                 )
@@ -91,10 +107,10 @@ abstract class FragmentSDKOperations : Fragment() {
             }
         }
         toggleAdaptiveButton().text =
-            if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) "Disable Adaptive" else "Enable Adaptive"
+            if (FuturaeSDK.isAdaptiveEnabled()) "Disable Adaptive" else "Enable Adaptive"
 
         setAdaptiveThreshold().setOnClickListener {
-            if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
+            if (FuturaeSDK.isAdaptiveEnabled()) {
                 var sliderValue = AdaptiveSDK.getAdaptiveCollectionThreshold()
                 val dialogView = layoutInflater.inflate(R.layout.dialog_adaptive_time, null)
                 val textValue = dialogView.findViewById<TextView>(R.id.sliderValue).apply {
@@ -122,14 +138,13 @@ abstract class FragmentSDKOperations : Fragment() {
         }
 
         serviceLogoButton().setOnClickListener {
-            val ftAccounts = FuturaeSdkWrapper.client.accounts
+            val ftAccounts = getAccounts()
             if (ftAccounts.isNotEmpty()) {
                 val ftAccount = ftAccounts.first()
                 val dialogView = layoutInflater.inflate(R.layout.dialog_service_logo, null)
                 val imageView = dialogView.findViewById<ImageView>(R.id.logoImage)
-                Glide.with(this).load(ftAccount.serviceLogo)
-                        .placeholder(R.drawable.ic_content_copy)
-                        .into(imageView)
+                Glide.with(this).load(ftAccount.serviceLogo).placeholder(R.drawable.ic_content_copy)
+                    .into(imageView)
                 val dialog =
                     AlertDialog.Builder(
                         requireContext(),
@@ -144,43 +159,57 @@ abstract class FragmentSDKOperations : Fragment() {
                 Toast.makeText(requireContext(), "No account enrolled", Toast.LENGTH_SHORT).show()
             }
         }
+
+        lifecycleScope.launch {
+            FuturaeSDK.sdkState().collect {
+                when (it.status) {
+                    is FuturaeSDKStatus.Corrupted -> sdkStatus().text = "SDK Corrupted"
+                    FuturaeSDKStatus.Locked -> sdkStatus().text = "Locked"
+                    FuturaeSDKStatus.Uninitialized -> sdkStatus().text = "Not initialized"
+                    is FuturaeSDKStatus.Unlocked -> sdkStatus().text = "Unlocked"
+                }
+                if (it.isBlocked) {
+                    sdkStatus().text = "Blocked by operation"
+                }
+                timeLeftView().text = "${it.remainingUnlockedTime}"
+            }
+        }
     }
 
     protected fun getAccountHistory() {
-        FuturaeSdkWrapper.client.accounts.firstOrNull()?.let {
+        getAccounts().firstOrNull()?.let {
             startActivity(Intent(requireContext(), ActivityAccountHistory::class.java))
         } ?: Toast.makeText(requireContext(), "No account enrolled", Toast.LENGTH_SHORT).show()
     }
 
     protected fun getAccountsStatus() {
-        FuturaeSdkWrapper.client.accounts.takeIf { it.isNotEmpty() }?.let { accounts ->
-            FuturaeSdkWrapper.client.getAccountsStatus(accounts.map { it.userId },
-                object : FuturaeResultCallback<AccountsStatus> {
-                    override fun success(result: AccountsStatus) {
-                        Toast.makeText(requireContext(), "Acc status success", Toast.LENGTH_SHORT).show()
-                        val sessionInfos = result.statuses.first().sessionInfos
+        getAccounts().takeIf { it.isNotEmpty() }
+            ?.let { accounts ->
+                lifecycleScope.launch {
+                    try {
+                        val accountsStatus =
+                            FuturaeSDK.client.accountApi.getAccountsStatus(
+                                *accounts.map { it.userId }.toTypedArray()
+                            ).await()
+                        val sessionInfos = accountsStatus.statuses.first().activeSessions
                         if (sessionInfos.isNotEmpty()) {
                             val session = ApproveSession(sessionInfos.first())
                             (activity as FuturaeActivity).onApproveAuth(
                                 session,
-                                session.hasExtraInfo(),
                                 null
                             )
                         } else {
-                            showAccountStatusInfo(result)
+                            showAccountStatusInfo(accountsStatus)
                         }
-                    }
-
-                    override fun failure(t: Throwable) {
+                    } catch (t: Throwable) {
                         showErrorAlert("Account Status Error", t)
                     }
-                })
-        } ?: Toast.makeText(requireContext(), "No accounts enrolled", Toast.LENGTH_SHORT).show()
+                }
+            } ?: Toast.makeText(requireContext(), "No accounts enrolled", Toast.LENGTH_SHORT).show()
     }
 
     private fun showAccountStatusInfo(result: AccountsStatus) {
-        val serviceIdsEnrolled: List<String> =
-            FuturaeSdkWrapper.client.accounts.map { it.serviceId }
+        val serviceIdsEnrolled: List<String> = getAccounts().map { it.serviceId }
         val featureFlagsText = result.featureFlags.joinToString { ff ->
             val defaultEnabled = ff.isEnabled
             val exceptionParam =
@@ -195,7 +224,6 @@ abstract class FragmentSDKOperations : Fragment() {
         )
     }
 
-
     protected fun scanQRCode() {
         getQRCodeCallback.launch(
             FTRQRCodeActivity.getIntent(requireContext(), true, false),
@@ -204,75 +232,83 @@ abstract class FragmentSDKOperations : Fragment() {
 
     protected fun onLogout() {
         // For demo purposes, we simply logout the first account we can find
-        val accounts = FuturaeSdkWrapper.client.accounts
+        val accounts = getAccounts()
         if (accounts.isEmpty()) {
             showAlert("Error", "No account to logout")
             return
         }
-        val account = accounts[0]
-        FuturaeSdkWrapper.client.logout(account.userId, object : FuturaeCallback {
-            override fun success() {
+        lifecycleScope.launch {
+            val account = accounts[0]
+            try {
+                FuturaeSDK.client.accountApi.logoutAccount(account.userId).await()
                 showAlert("Success", "Logged out " + account.username)
+            } catch (t: Throwable) {
+                showErrorAlert("SDK Unlock", t)
             }
-
-            override fun failure(throwable: Throwable) {
-                showErrorAlert("SDK Unlock", throwable)
-            }
-        })
+        }
     }
 
     protected fun onTOTPAuth() {
-        val accounts = FuturaeSdkWrapper.client.accounts
+        val accounts = getAccounts()
         if (accounts.isEmpty()) {
             showAlert("Error", "No account enrolled")
             return
         }
-        val account = accounts[0]
-        try {
-            val totp = FuturaeSdkWrapper.client.nextTotp(account.userId)
-            showAlert(
-                "TOTP", "Code: ${totp.passcode}\nRemaining seconds: ${totp.remainingSecs}"
-            )
-        } catch (e: LockOperationIsLockedException) {
-            showErrorAlert("SDK Unlock", e)
+        lifecycleScope.launch {
+            val account = accounts[0]
+            try {
+                val totp = FuturaeSDK.client.authApi.getTOTP(
+                    account.userId,
+                    SDKAuthMode.Unlock
+                ).await()
+                showAlert(
+                    "TOTP", "Code: ${totp.passcode}\nRemaining seconds: ${totp.remainingSeconds}"
+                )
+            } catch (e: FTUnlockRequiredException) {
+                Timber.e(e)
+                showErrorAlert("SDK Unlock", e)
+            }
         }
     }
 
     protected fun onHotpAuth() {
-        val accounts = FuturaeSdkWrapper.client.accounts
+        val accounts = getAccounts()
         if (accounts.isEmpty()) {
             showAlert("Error", "No account enrolled")
             return
         }
         val account = accounts[0]
         try {
-            val hotp = FuturaeSdkWrapper.client.getSynchronousAuthToken(account.userId)
+            val hotp = FuturaeSDK.client.authApi.getNextSynchronousAuthToken(account.userId)
             showDialog("TOTP", "HOTP JWT: ${hotp}\n", "OK", {
                 Timber.e("JWT: ${hotp}")
                 val clipboardMgr = getSystemService(requireContext(), ClipboardManager::class.java)
                 val clip = ClipData.newPlainText("HOTP JWT", hotp)
                 clipboardMgr?.setPrimaryClip(clip)
             })
-        } catch (e: LockOperationIsLockedException) {
+        } catch (e: FTUnlockRequiredException) {
+            Timber.e(e)
             showErrorAlert("SDK Unlock", e)
         }
     }
 
     protected fun attemptRestoreAccounts() {
-        FuturaeSdkWrapper.client.checkForMigratableAccounts(object : Callback<MigrateableAccounts> {
-            override fun onSuccess(result: MigrateableAccounts) {
-                if (result.numAccounts > 0) {
+        lifecycleScope.launch {
+            try {
+                val result = FuturaeSDK.client.migrationApi.getMigratableAccounts().await()
+                if (result.migratableAccountInfos.isNotEmpty()) {
+                    val requiresPinProtection =
+                        result.pinProtected || localStorage.getPersistedSDKConfig().lockConfigurationType == LockConfigurationType.SDK_PIN_WITH_BIOMETRICS_OPTIONAL
                     showDialog(
                         "SDK Account Migration",
-                        "Restoring Accounts possible for:\n ${result.numAccounts} accounts."
-                                + "\n Requires PIN: ${result.pinProtected}"
+                        "Restoring Accounts possible for:\n ${result.migratableAccountInfos.size} accounts."
+                                + "\n Requires PIN: $requiresPinProtection"
                                 + "\n Requires Adaptive: ${result.adaptiveEnabled}"
-                                + "\n Account names: \n ${result.migratableAccountInfos.joinToString { acc -> acc.username + ",\n" }}",
+                                + "\n Account names: \n ${result.migratableAccountInfos.joinToString { acc -> acc.username + ",\n" }}"
+                                + "\n Device IDs: \n ${result.migratableAccountInfos.joinToString { acc -> acc.deviceId + ",\n" }}",
                         "Proceed",
                         {
-                            if (result.pinProtected
-                                || localStorage.getPersistedSDKConfig().lockConfigurationType == LockConfigurationType.SDK_PIN_WITH_BIOMETRICS_OPTIONAL
-                            ) {
+                            if (requiresPinProtection) {
                                 onAccountsMigrationWithSDKPINExecute()
                             } else {
                                 onAccountsMigrationExecute()
@@ -286,182 +322,203 @@ abstract class FragmentSDKOperations : Fragment() {
                         "No migratable accounts found"
                     )
                 }
+            } catch (t: Throwable) {
+                showErrorAlert("SDK Unlock", t)
             }
 
-            override fun onError(throwable: Throwable) {
-                showErrorAlert("SDK Unlock", throwable)
-            }
-        })
+        }
     }
 
+    override fun onResume() {
+        super.onResume()
+
+        lifecycleScope.launch {
+            QRCodeFlowOpenCoordinator.instance.flow.collect { shouldOpenQrScanner ->
+                if (!shouldOpenQrScanner) {
+                    return@collect
+                }
+
+                QRCodeFlowOpenCoordinator.instance.notifyShouldOpenQRCodeConsumed()
+
+                scanQRCode()
+            }
+        }
+    }
 
     private fun onAccountsMigrationExecute() {
-        FuturaeSdkWrapper.client.executeAccountMigration(object :
-            FuturaeResultCallback<Array<AccountsMigrationResource.MigrationAccount>> {
-            override fun success(result: Array<AccountsMigrationResource.MigrationAccount>) {
-                val userIdsMigrated = StringBuilder()
-                for (i in result.indices) {
-                    if (i > 0) {
-                        userIdsMigrated.append("\n")
-                    }
-                    userIdsMigrated.append(result[i].username)
+        requireContext().showInputDialog("Flow Binding Token") { token ->
+            lifecycleScope.launch {
+                try {
+                    val result = FuturaeSDK.client.migrationApi.migrateAccounts(
+                        MigrationUseCase.AccountsNotSecuredWithPinCode,
+                        token
+                    ).await()
+                    onMigrationSuccess(result)
+                } catch (t: Throwable) {
+                    showErrorAlert("SDK Unlock", t)
                 }
-                Timber.i("Accounts migration successful. Accounts migrated (total: " + result.size + "): " + userIdsMigrated)
-                showAlert(
-                    "Accounts migration successful",
-                    """Accounts migrated (total: ${result.size}):$userIdsMigrated""".trimIndent()
-                )
             }
+        }
+    }
 
-            override fun failure(throwable: Throwable) {
-                showErrorAlert("SDK Unlock", throwable)
+    private fun onMigrationSuccess(migrationAccounts: List<MigrationAccount>) {
+        val userIdsMigrated = StringBuilder()
+        for (i in migrationAccounts.indices) {
+            if (i > 0) {
+                userIdsMigrated.append("\n")
             }
-        })
+            userIdsMigrated.append(migrationAccounts[i].username)
+        }
+        Timber.i("Accounts migration successful. Accounts migrated (total: " + migrationAccounts.size + "): " + userIdsMigrated)
+        showAlert(
+            "Accounts migration successful",
+            """Accounts migrated (total: ${migrationAccounts.size}):$userIdsMigrated""".trimIndent()
+        )
     }
 
     private fun onAccountsMigrationWithSDKPINExecute() {
-        getPinWithCallback {
-            FuturaeSdkWrapper.client.executeAccountMigrationWithSDKPin(it,
-                object : Callback<List<AccountsMigrationResource.MigrationAccount>> {
-                    override fun onSuccess(result: List<AccountsMigrationResource.MigrationAccount>) {
-                        showAlert(
-                            "Accounts migration successful",
-                            "Accounts migrated (total: ${result.size}): \n ${result.joinToString { acc -> acc.username + ",\n" }}".trimIndent()
-                        )
+        getPinWithCallback { pin ->
+            requireContext().showInputDialog("Flow Binding Token") { token ->
+                lifecycleScope.launch {
+                    try {
+                        val result = FuturaeSDK.client.migrationApi.migrateAccounts(
+                            MigrationUseCase.AccountsSecuredWithPinCode(pin),
+                            token,
+                        ).await()
+                        onMigrationSuccess(result)
+                    } catch (t: Throwable) {
+                        showErrorAlert("SDK Unlock", t)
                     }
-
-                    override fun onError(throwable: Throwable) {
-                        showErrorAlert("SDK Unlock", throwable)
-                    }
-                })
+                }
+            }
         }
     }
 
     // QRCode callbacks
     private fun onEnrollQRCodeScanned(data: Intent) {
         (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
-            FuturaeSdkWrapper.client.enroll(qrcode.rawValue, object : FuturaeCallback {
-                override fun success() {
-                    Timber.i("Enrollment successful")
-                    showAlert("Success", "Enrollment successful")
+            requireContext().showInputDialog("Flow Binding Token") { token ->
+                lifecycleScope.launch {
+                    try {
+                        FuturaeSDK.client.accountApi.enrollAccount(
+                            EnrollmentParams(
+                                inputCode = ActivationCode(qrcode.rawValue),
+                                enrollmentUseCase = EnrollAccount,
+                                flowBindingToken = token
+                            )
+                        ).await()
+                        Toast.makeText(requireContext(), "Account Enrolled", Toast.LENGTH_SHORT)
+                            .show()
+                    } catch (t: Throwable) {
+                        Timber.e(t)
+                        showErrorAlert("Enroll API error", t)
+                    }
                 }
-
-                override fun failure(throwable: Throwable) {
-                    showErrorAlert("SDK Unlock", throwable)
-                }
-            })
+            }
         }
     }
 
     protected fun onManualEntryEnroll(sdkPin: CharArray? = null) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_manual_entry, null, false)
-        val dialog = AlertDialog.Builder(requireContext())
-            .setView(dialogView)
-            .setPositiveButton("ok") { dialog, which ->
-                val activationShortCode =
-                    dialogView.findViewById<AppCompatEditText>(R.id.edittext).text.toString().replace(" ", "")
-                if (sdkPin != null) {
-                    FuturaeSdkWrapper.client.enrollWithShortcodeAndSetupSDKPin(
-                        activationShortCode,
-                        sdkPin,
-                        object : Callback<Unit> {
-                            override fun onSuccess(result: Unit) {
-                                Timber.i("Enrollment successful")
-                                showAlert("Success", "Enrollment successful")
-                            }
-
-                            override fun onError(throwable: Throwable) {
-                                showErrorAlert("SDK Unlock", throwable)
-                            }
-                        })
-                } else {
-                    FuturaeSdkWrapper.client.enrollWithShortcode(activationShortCode, object : FuturaeCallback {
-                        override fun success() {
-                            Timber.i("Enrollment successful")
-                            showAlert("Success", "Enrollment successful")
-                        }
-
-                        override fun failure(throwable: Throwable) {
-                            showErrorAlert("SDK Unlock", throwable)
-                        }
-                    })
+        requireContext().showInputDialog("Activation Shortcode") { code ->
+            val enrollUseCase = if (sdkPin != null) {
+                EnrollAccountAndSetupSDKPin(
+                    sdkPin = sdkPin
+                )
+            } else {
+                EnrollAccount
+            }
+            requireContext().showInputDialog("Flow Binding Token") { token ->
+                lifecycleScope.launch {
+                    try {
+                        FuturaeSDK.client.accountApi.enrollAccount(
+                            enrollmentParameters = EnrollmentParams(
+                                ShortActivationCode(code),
+                                enrollUseCase,
+                                token
+                            )
+                        ).await()
+                        showToast("Enrolled")
+                    } catch (t: Throwable) {
+                        showErrorAlert("Enroll Error", t)
+                    }
                 }
             }
-            .create()
-        dialog.show()
+        }
     }
 
     private fun onAuthQRCodeScanned(data: Intent) {
         (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
-            var userId: String? = null
-            var sessionToken: String? = null
+            val userId: String?
+            val sessionToken: String?
             try {
-                userId = QRCodeUtils.getUserIdFromQrcode(qrcode.rawValue)
-                sessionToken = QRCodeUtils.getSessionTokenFromQrcode(qrcode.rawValue)
-            } catch (e: MalformedQRCodeException) {
-                e.printStackTrace()
+                userId = FTQRCodeUtils.getUserIdFromQrcode(qrcode.rawValue)
+                sessionToken = FTQRCodeUtils.getSessionTokenFromQrcode(qrcode.rawValue)
+            } catch (e: FTMalformedQRCodeException) {
+                showErrorAlert("QR Error", e)
                 return
             }
 
-            FuturaeSdkWrapper.client.sessionInfoByToken(
-                userId,
-                sessionToken,
-                object : FuturaeResultCallback<SessionInfo> {
-                    override fun success(result: SessionInfo) {
-                        ApproveSession(result).takeIf { it.userId?.isNotBlank() == true }
-                            ?.let { session ->
-                                showDialog("approve",
-                                    "Would you like to approve the request?${session.toDialogMessage()}",
-                                    "Approve",
-                                    {
-                                        FuturaeSdkWrapper.client.approveAuth(
-                                            qrcode.rawValue,
-                                            object : FuturaeCallback {
-                                                override fun success() {
-                                                    Toast.makeText(
-                                                        requireContext(),
-                                                        "Approved",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                }
-
-                                                override fun failure(throwable: Throwable) {
-                                                    showErrorAlert("SDK Error", throwable)
-                                                }
-                                            },
-                                            null
-                                        )
-                                    },
-                                    "Deny",
-                                    {
-                                        FuturaeSdkWrapper.client.rejectAuth(
-                                            qrcode.rawValue,
-                                            false,
-                                            object : FuturaeCallback {
-                                                override fun success() {
-                                                    Toast.makeText(
-                                                        requireContext(),
-                                                        "Denied",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                }
-
-                                                override fun failure(throwable: Throwable) {
-                                                    showErrorAlert("SDK Error", throwable)
-                                                }
-                                            }, null
-                                        )
-                                    })
-                            } ?: showErrorAlert(
-                            "SDK Error",
-                            Throwable("Session is missing user id")
+            lifecycleScope.launch {
+                try {
+                    val sessionInfo = FuturaeSDK.client.sessionApi.getSessionInfo(
+                        SessionInfoQuery(
+                            ByToken(sessionToken),
+                            userId,
                         )
-                    }
+                    ).await()
 
-                    override fun failure(t: Throwable) {
-                        showErrorAlert("SDK Unlock", t)
-                    }
-                })
+                    ApproveSession(sessionInfo).takeIf { it.userId?.isNotBlank() == true }
+                        ?.let { session ->
+                            showDialog("approve",
+                                "Would you like to approve the request?${session.toDialogMessage()}",
+                                "Approve",
+                                {
+                                    lifecycleScope.launch {
+                                        try {
+                                            val paramBuilder = ApproveParameters.Builder(
+                                                OnlineQR(qrcode.rawValue)
+                                            )
+                                            sessionInfo.approveInfo?.let {
+                                                paramBuilder.setExtraInfo(it)
+                                            }
+                                            FuturaeSDK.client.authApi.approve(
+                                                paramBuilder.build()
+                                            ).await()
+                                            showToast("Approved")
+                                        } catch (t: Throwable) {
+                                            showErrorAlert("Auth API Error", t)
+                                        }
+
+                                    }
+                                },
+                                "Deny",
+                                {
+                                    lifecycleScope.launch {
+                                        try {
+                                            val paramBuilder = RejectParameters.Builder(
+                                                OnlineQR(qrcode.rawValue)
+                                            )
+                                            sessionInfo.approveInfo?.let {
+                                                paramBuilder.setExtraInfo(it)
+                                            }
+
+                                            FuturaeSDK.client.authApi.reject(
+                                                paramBuilder.build()
+                                            ).await()
+                                            showToast("Rejected")
+                                        } catch (t: Throwable) {
+                                            showErrorAlert("Auth API Error", t)
+                                        }
+                                    }
+                                })
+                        } ?: showErrorAlert(
+                        "SDK Error",
+                        Throwable("Session is missing user id")
+                    )
+                } catch (t: Throwable) {
+                    showErrorAlert("Session API error", t)
+                }
+            }
         }
     }
 
@@ -479,66 +536,66 @@ abstract class FragmentSDKOperations : Fragment() {
     }
 
     private fun handleUsernamelessQr(qrCode: String, userId: String) {
-        val sessionToken = QRCodeUtils.getSessionTokenFromQrcode(qrCode)
-        FuturaeSdkWrapper.client.sessionInfoByToken(
-            userId,
-            sessionToken,
-            object : FuturaeResultCallback<SessionInfo> {
-                override fun success(sessionInfo: SessionInfo) {
-                    val session = ApproveSession(sessionInfo)
-                    showDialog("approve",
-                        "Would you like to approve the request?${session.toDialogMessage()}",
-                        "Approve",
-                        {
-                            FuturaeSdkWrapper.sdk.getClient().approveAuthWithUsernamelessQrCode(
-                                qrCode,
-                                userId,
-                                session.info,
-                                object : Callback<Unit> {
-                                    override fun onSuccess(result: Unit) {
-                                        Toast.makeText(requireContext(), "Approved", Toast.LENGTH_SHORT).show()
-                                    }
-
-                                    override fun onError(throwable: Throwable) {
-                                        showErrorAlert("SDK Error", throwable)
-                                    }
-
-                                },
-                            )
-                        },
-                        "Reject",
-                        {
-                            FuturaeSdkWrapper.sdk.getClient().rejectAuthWithUsernamelessQrCode(
-                                qrCode,
-                                userId,
-                                false,
-                                session.info,
-                                object : Callback<Unit> {
-                                    override fun onSuccess(result: Unit) {
-                                        Toast.makeText(requireContext(), "Rejected", Toast.LENGTH_SHORT).show()
-                                    }
-
-                                    override fun onError(throwable: Throwable) {
-                                        showErrorAlert("SDK Error", throwable)
-                                    }
-                                },
-                            )
-                        }
+        val sessionToken = FTQRCodeUtils.getSessionTokenFromQrcode(qrCode)
+        lifecycleScope.launch {
+            val sessionInfo = try {
+                FuturaeSDK.client.sessionApi.getSessionInfo(
+                    SessionInfoQuery(
+                        ByToken(sessionToken),
+                        userId,
                     )
-                }
-
-                override fun failure(t: Throwable) {
-                    showErrorAlert("SDK Unlock", t)
-                }
-            })
+                ).await()
+            } catch (t: Throwable) {
+                showErrorAlert("Session API error", t)
+                return@launch
+            }
+            val approveSession = ApproveSession(sessionInfo)
+            showDialog("approve",
+                "Would you like to approve the request?${approveSession.toDialogMessage()}",
+                "Approve",
+                {
+                    lifecycleScope.launch {
+                        val paramBuilder = ApproveParameters.Builder(
+                            UsernamelessQR(userId, qrCode)
+                        )
+                        sessionInfo.approveInfo?.takeIf { it.isNotEmpty() }?.let {
+                            paramBuilder.setExtraInfo(it)
+                        }
+                        try {
+                            FuturaeSDK.client.authApi.approve(paramBuilder.build()).await()
+                            showToast("Approved")
+                        } catch (t: Throwable) {
+                            showErrorAlert("Auth API Error", t)
+                        }
+                    }
+                },
+                "Reject",
+                {
+                    lifecycleScope.launch {
+                        val paramBuilder = RejectParameters.Builder(
+                            UsernamelessQR(userId, qrCode)
+                        )
+                        sessionInfo.approveInfo?.takeIf { it.isNotEmpty() }?.let {
+                            paramBuilder.setExtraInfo(it)
+                        }
+                        try {
+                            FuturaeSDK.client.authApi.reject(paramBuilder.build()).await()
+                            showToast("Rejected")
+                        } catch (t: Throwable) {
+                            showErrorAlert("Auth API Error", t)
+                        }
+                    }
+                })
+        }
     }
 
     protected fun onOfflineAuthQRCodeScanned(data: Intent) {
         (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { barcode ->
             val qrCode = barcode.rawValue
             val extras: List<ApproveInfo>? = try {
-                QRCodeUtils.getExtraInfoFromOfflineQrcode(qrCode)
-            } catch (e: MalformedQRCodeException) {
+                FuturaeSDK.client.sessionApi.extractQRCodeExtraInfo(qrCode)
+            } catch (e: FTMalformedQRCodeException) {
+                Timber.e(e)
                 showErrorAlert("SDK Unlock", e)
                 return
             }
@@ -550,16 +607,21 @@ abstract class FragmentSDKOperations : Fragment() {
                 }
             }
             showDialog("Approve", "Request Info: ${sb}", "Approve", {
-                val verificationSignature = try {
-                    FuturaeSdkWrapper.client.computeVerificationCodeFromQrcode(qrCode)
-                } catch (e: Exception) {
-                    showErrorAlert("SDK Unlock", e)
-                    return@showDialog
+                lifecycleScope.launch {
+                    val verificationSignature = try {
+                        FuturaeSDK.client.authApi.getOfflineQRVerificationCode(
+                            qrCode,
+                            SDKAuthMode.Unlock
+                        ).await()
+                    } catch (t: Throwable) {
+                        showErrorAlert("SDK Unlock", t)
+                        return@launch
+                    }
+                    showAlert(
+                        "Confirm Transaction",
+                        "To Approve the transaction, enter: $verificationSignature in the browser"
+                    )
                 }
-                showAlert(
-                    "Confirm Transaction",
-                    "To Approve the transaction, enter: $verificationSignature in the browser"
-                )
             }, " Deny", {
                 //Nothing
             })
@@ -568,24 +630,23 @@ abstract class FragmentSDKOperations : Fragment() {
 
     protected fun onQRCodeScanned(data: Intent) {
         (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
-            when (QRCodeUtils.getQrcodeType(qrcode.rawValue)) {
-                QRCodeUtils.QRType.Enroll -> onEnrollQRCodeScanned(data)
-                QRCodeUtils.QRType.Offline -> onOfflineAuthQRCodeScanned(data)
-                QRCodeUtils.QRType.Online -> onAuthQRCodeScanned(data)
-                QRCodeUtils.QRType.Usernameless -> onAnonymousQRCodeScanned(data)
+            when (FTQRCodeUtils.getQrcodeType(qrcode.rawValue)) {
+                FTQRCodeUtils.QRType.Enroll -> onEnrollQRCodeScanned(data)
+                FTQRCodeUtils.QRType.Offline -> onOfflineAuthQRCodeScanned(data)
+                FTQRCodeUtils.QRType.Online -> onAuthQRCodeScanned(data)
+                FTQRCodeUtils.QRType.Usernameless -> onAnonymousQRCodeScanned(data)
             }
         }
     }
 
-    protected fun getPinWithCallback(callback: (CharArray) -> Unit) {
-        val pinFragment = FragmentPin()
-        parentFragmentManager.beginTransaction().add(R.id.pinFragmentContainer, pinFragment.apply {
-            listener = object : FragmentPin.Listener {
-                override fun onPinComplete(pin: CharArray) {
-                    parentFragmentManager.beginTransaction().remove(pinFragment).commit()
-                    callback(pin)
-                }
-            }
-        }).commit()
+    private fun getAccounts(): List<FTAccount> =
+        FuturaeSDK.client.accountApi.getActiveAccounts()
+
+    protected suspend fun showToast(msg: String) = withContext(Dispatchers.Main) {
+        Toast.makeText(
+            requireContext(),
+            msg,
+            Toast.LENGTH_SHORT
+        ).show()
     }
 }
