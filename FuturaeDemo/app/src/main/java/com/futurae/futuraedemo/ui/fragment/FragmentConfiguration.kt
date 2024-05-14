@@ -16,7 +16,7 @@ import com.futurae.sdk.debug.FuturaeDebugUtil
 class FragmentConfiguration : Fragment() {
 
     lateinit var binding: FragmentSdkConfigurationBinding
-    private var listener : Listener? = null
+    private var listener: Listener? = null
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -46,7 +46,7 @@ class FragmentConfiguration : Fragment() {
             }
 
             try {
-                 val duration = when(binding.chipGroup.checkedChipId) {
+                val duration = when (binding.chipGroup.checkedChipId) {
                     R.id.chip30 -> 30
                     R.id.chip60 -> 60
                     R.id.chip120 -> 120
@@ -56,10 +56,12 @@ class FragmentConfiguration : Fragment() {
                     else -> throw IllegalStateException("Unrecognized duration selection")
                 }
                 val sdkConfig = SDKConfiguration.Builder()
-                    .setUnlockDuration(duration)
-                    .setLockConfigurationType(sdkLockConfiguration)
-                    .setInvalidatedByBiometricChange(binding.checkboxBioInvalidation.isChecked)
-                    .build()
+                        .setUnlockDuration(duration)
+                        .setLockConfigurationType(sdkLockConfiguration)
+                        .setInvalidatedByBiometricChange(binding.checkboxBioInvalidation.isChecked)
+                        .setUnlockedDeviceRequired(binding.checkboxDeviceUnlocked.isChecked)
+                        .setSkipHardwareSecurity(binding.checkboxSkipHardwareStorage.isChecked)
+                        .build()
                 listener?.onConfigurationSelected(sdkConfig)
             } catch (e: Exception) {
                 showErrorAlert("SDK Error", e)
@@ -67,6 +69,9 @@ class FragmentConfiguration : Fragment() {
         }
         binding.corruptv1KeysButton.setOnClickListener {
             FuturaeDebugUtil.corruptV1Keys(requireContext())
+        }
+        binding.corruptv2KeysButton.setOnClickListener {
+            FuturaeDebugUtil.corruptV2Keys(requireContext())
         }
         binding.corruptDbButton.setOnClickListener {
             FuturaeDebugUtil.corruptDBTokens(requireContext())

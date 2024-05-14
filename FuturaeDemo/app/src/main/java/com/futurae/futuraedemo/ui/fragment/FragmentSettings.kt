@@ -21,10 +21,15 @@ import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.sdk.Callback
 import com.futurae.sdk.FuturaeCallback
+import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.LockConfigurationType
 import com.futurae.sdk.SDKConfiguration
 import com.futurae.sdk.debug.FuturaeDebugUtil
+import com.futurae.sdk.exception.FTMissingTokensException
+import com.futurae.sdk.exception.LockCorruptedStateException
 import com.futurae.sdk.model.IntegrityResult
+import timber.log.Timber
+import java.lang.IllegalStateException
 
 
 class FragmentSettings : Fragment() {
@@ -138,6 +143,18 @@ class FragmentSettings : Fragment() {
         }
         binding.buttonClearV2LocalStorageKey.setOnClickListener {
             FuturaeDebugUtil.corruptEncryptedStorageKey(requireContext())
+        }
+        binding.buttonCheckSigning.setOnClickListener {
+            try {
+                FuturaeSDK.validateSDKSigning()
+                Toast.makeText(requireContext(),"SDK healthy", Toast.LENGTH_SHORT).show()
+            } catch (e : Throwable) {
+                when(e) {
+                    is IllegalStateException -> showErrorAlert("SDK Uninitialized",e)
+                    is LockCorruptedStateException -> showErrorAlert("SDK Corrupted",e)
+                    is FTMissingTokensException -> showErrorAlert("SDK Encrypted Storage error",e)
+                }
+            }
         }
     }
 

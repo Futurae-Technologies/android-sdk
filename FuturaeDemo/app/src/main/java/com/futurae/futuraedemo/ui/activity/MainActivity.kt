@@ -165,7 +165,7 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
             else -> {
                 showDialog(
                     "Permission Request",
-                    "In order to scan a QR code, Futurae requires access to the camera.",
+                    getString(R.string.camera_perm_explain),
                     "ok",
                     {
                         requestPermissionLauncher.launch(Manifest.permission.CAMERA)

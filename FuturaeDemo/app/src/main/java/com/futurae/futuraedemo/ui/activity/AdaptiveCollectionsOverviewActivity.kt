@@ -14,10 +14,10 @@ import com.futurae.futuraedemo.databinding.ItemAdaptiveCollectionBinding
 import com.futurae.sdk.adaptive.AdaptiveDbHelper
 import com.futurae.sdk.adaptive.model.AdaptiveCollection
 import com.google.gson.GsonBuilder
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class AdaptiveViewerActivity : FuturaeActivity() {
 
@@ -56,8 +56,8 @@ class AdaptiveViewerActivity : FuturaeActivity() {
                 binding.clearCollections.isVisible = it.isNotEmpty()
                 adapter.submitList(it.sortedBy { coll -> coll.timestamp })
 
-                if (it.isEmpty()) {
-                    if (FuturaeSdkWrapper.client.accounts.isEmpty()) {
+                if(it.isEmpty()) {
+                    if(FuturaeSdkWrapper.client.accounts.isEmpty()) {
                         binding.emptyText.text = "You must enroll an account before gathering collections"
                     } else {
                         binding.emptyText.text = "No collections yet"

@@ -1,19 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.futurae.futuraedemo">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <uses-permission android:name="android.permission.CAMERA" />
 
     <uses-feature android:name="android.hardware.camera" />
 
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- START - ADAPTIVE PERMISSIONS - USE ONLY FOR ADAPTIVE SDK -->
+    <!-- START ADAPTIVE PERMISSIONS -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
@@ -31,7 +28,7 @@
     <uses-permission
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
-    <!-- END - ADAPTIVE PERMISSIONS -->
+
 
     <application
         android:name=".ui.App"
@@ -61,8 +58,8 @@
 
         <activity
             android:name=".ui.activity.MainActivity"
-            android:exported="true"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -81,28 +78,27 @@
 
         <activity
             android:name=".ui.activity.FTRQRCodeActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-
-        <activity
-            android:name=".ui.activity.ActivityAccountHistory"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-
-        <activity
-            android:name=".ui.activity.AdaptiveViewerActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-
-        <activity
-            android:name=".ui.activity.AdaptiveCollectionDetailsActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
+            android:exported="false" />
 
         <activity
             android:name=".ui.activity.ActivitySDKConfiguration"
-            android:exported="false"
-            android:screenOrientation="portrait" />
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.activity.ActivityPin"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.activity.AdaptiveViewerActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.activity.AdaptiveCollectionDetailsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.activity.ActivityAccountHistory"
+            android:exported="false" />
 
     </application>
 

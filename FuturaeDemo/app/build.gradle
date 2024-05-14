@@ -1,16 +1,22 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-kapt'
+apply plugin: 'com.google.firebase.crashlytics'
 
 android {
+    namespace "com.futurae.futuraedemo"
     compileSdkVersion 34
 
     defaultConfig {
         applicationId "com.futurae.futuraedemo"
         minSdkVersion 23
         targetSdkVersion 34
-        versionCode 12
-        versionName "2.3.0"
+        versionCode 259
+        versionName "2.5.9"
+
+        resValue "string", "sdk_id", "$SDK_ID"
+        resValue "string", "sdk_key", "$SDK_KEY"
+        resValue "string", "base_url", "$BASE_URL"
     }
 
     compileOptions {
@@ -35,11 +41,12 @@ android {
     }
 
     buildFeatures {
-        viewBinding true
+        buildConfig = true
+        viewBinding = true
     }
 
     lintOptions {
-        abortOnError false
+        abortOnError = false
     }
 
     packagingOptions {
@@ -49,10 +56,17 @@ android {
 
 repositories {
     maven {
-        url "https://artifactory.futurae.com/artifactory/futurae-mobile"
+        url "https://maven.pkg.github.com/Futurae-Technologies/android-sdk-beta"
         credentials {
-            username = "anonymous"
-            password = ""
+            username = "$GITHUB_ACTOR"
+            password = "$GITHUB_TOKEN"
+        }
+    }
+    maven {
+        url "https://maven.pkg.github.com/Futurae-Technologies/android-adaptive-sdk"
+        credentials {
+            username = "$GITHUB_ACTOR"
+            password = "$GITHUB_TOKEN"
         }
     }
     google()
@@ -75,13 +89,19 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.9'
     implementation 'com.jakewharton.timber:timber:5.0.1'
 
-    implementation 'com.andrognito.pinlockview:pinlockview:2.1.0'
+    implementation 'com.chaos.view:pinview:1.4.4'
     implementation 'com.github.bumptech.glide:glide:4.15.0'
 
+    implementation platform("com.google.firebase:firebase-bom:32.3.1")
+    implementation 'com.google.firebase:firebase-crashlytics-ktx'
+    implementation 'com.google.firebase:firebase-messaging-ktx'
+
     // Futurae SDK
-    implementation 'com.futurae.sdk:futuraekit:2.4.5'
+    implementation 'com.futurae.sdk:futuraekit:2.5.9'
     // OPTIONAL - Adaptive SDK.
     implementation 'com.futurae.sdk:adaptive:1.0.2-alpha'
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.7'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.7.7'
 }
 
 apply plugin: 'com.google.gms.google-services'

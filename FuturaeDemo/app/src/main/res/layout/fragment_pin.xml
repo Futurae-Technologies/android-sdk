@@ -6,15 +6,6 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <com.andrognito.pinlockview.IndicatorDots
-        android:id="@+id/indicator_dots"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:indicatorType="fillWithAnimation"
-        app:layout_constraintBottom_toTopOf="@id/guidelineView"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guidelineView"
         android:layout_width="0dp"
@@ -22,16 +13,30 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_percent="0.3" />
 
-    <com.andrognito.pinlockview.PinLockView
+    <com.chaos.view.PinView
         android:id="@+id/pin_lock_view"
-        android:layout_width="0dp"
+        style="@style/PinWidget.PinView"
+        android:layout_width="wrap_content"
         android:layout_height="0dp"
-        app:keypadShowDeleteButton="true"
-        app:keypadTextSize="20sp"
+        android:cursorVisible="true"
+        android:hint="Hint."
+        android:inputType="text"
+        android:textColor="#ffffff"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:cursorColor="#ffffff"
+        app:cursorWidth="2dp"
+        app:itemCount="6"
+        app:itemHeight="48dp"
+        app:itemRadius="4dp"
+        app:itemSpacing="0dp"
+        app:itemWidth="48dp"
+        app:lineColor="#ffffff"
+        app:lineWidth="2dp"
+        app:viewType="rectangle"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/guidelineView"
-        app:pinLength="6" />
+        app:layout_constraintTop_toBottomOf="@id/guidelineView"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

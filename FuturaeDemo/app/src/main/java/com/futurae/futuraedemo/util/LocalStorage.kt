@@ -10,6 +10,8 @@ private const val SP_NAME = "SP"
 private const val SP_KEY_LOCK_CONFIGURATION = "SP_LC"
 private const val SP_KEY_DURATION = "SP_D"
 private const val SP_KEY_INVALIDATE_BY_BIOMETRICS = "SP_IBB"
+private const val SP_KEY_REQUIRE_DEVICE_UNLOCKED = "SP_RDU"
+private const val SP_KEY_SKIP_HARDWARE_SECURITY = "SP_SHS"
 
 class LocalStorage constructor(private val context: Context) {
 
@@ -27,6 +29,8 @@ class LocalStorage constructor(private val context: Context) {
             putString(SP_KEY_LOCK_CONFIGURATION, config.lockConfigurationType.name)
             putInt(SP_KEY_DURATION, config.unlockDuration)
             putBoolean(SP_KEY_INVALIDATE_BY_BIOMETRICS, config.invalidatedByBiometricChange)
+            putBoolean(SP_KEY_REQUIRE_DEVICE_UNLOCKED, config.unlockedDeviceRequired)
+            putBoolean(SP_KEY_SKIP_HARDWARE_SECURITY, config.skipHardwareSecurity)
         }
     }
 
@@ -39,6 +43,8 @@ class LocalStorage constructor(private val context: Context) {
             )
             .setUnlockDuration(sharedPrefs.getInt(SP_KEY_DURATION, -1))
             .setInvalidatedByBiometricChange(sharedPrefs.getBoolean(SP_KEY_INVALIDATE_BY_BIOMETRICS, false))
+            .setUnlockedDeviceRequired(sharedPrefs.getBoolean(SP_KEY_REQUIRE_DEVICE_UNLOCKED, false))
+            .setSkipHardwareSecurity(sharedPrefs.getBoolean(SP_KEY_SKIP_HARDWARE_SECURITY, false))
             .build()
     }
 

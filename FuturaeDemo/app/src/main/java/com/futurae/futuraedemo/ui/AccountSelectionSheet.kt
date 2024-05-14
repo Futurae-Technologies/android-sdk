@@ -70,6 +70,7 @@ class AccountSelectionSheet : BottomSheetDialogFragment() {
             holder.binding.subtitleText.text = ftAccount.serviceId
             Glide.with(holder.binding.root.context)
                 .load(ftAccount.serviceLogo)
+                .placeholder(R.drawable.ic_content_copy)
                 .into(holder.binding.serviceLogo)
         }
 

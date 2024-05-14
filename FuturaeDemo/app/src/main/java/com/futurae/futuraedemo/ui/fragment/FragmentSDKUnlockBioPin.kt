@@ -15,12 +15,12 @@ import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.sdk.Callback
-import com.futurae.sdk.FuturaeClient
 import com.futurae.sdk.MalformedQRCodeException
 import com.futurae.sdk.exception.LockOperationIsLockedException
 import com.futurae.sdk.model.ApproveInfo
 import com.futurae.sdk.model.CurrentTotp
 import com.futurae.sdk.model.UserPresenceVerification
+import com.futurae.sdk.utils.QRCodeUtils
 import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.material.button.MaterialButton
 
@@ -46,7 +46,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                 (result.data?.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
                     when (currentRequest) {
                         REQUEST_ENROLL_WITH_PIN -> {
-                            if (FuturaeClient.getQrcodeType(qrcode.rawValue) == FuturaeClient.QR_ENROLL) {
+                            if (QRCodeUtils.getQrcodeType(qrcode.rawValue) == QRCodeUtils.QRType.Enroll) {
                                 getPinWithCallback {
                                     FuturaeSdkWrapper.client.enrollAndSetupSDKPin(
                                         qrcode.rawValue,
@@ -82,16 +82,16 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                         }
 
                         REQUEST_QR_OFFLINE_WITH_PIN -> {
-                            if (FuturaeClient.getQrcodeType(qrcode.rawValue) == FuturaeClient.QR_OFFLINE) {
+                            if (QRCodeUtils.getQrcodeType(qrcode.rawValue) == QRCodeUtils.QRType.Offline) {
                                 val accounts = FuturaeSdkWrapper.client.accounts
-                                if (accounts == null || accounts.size == 0) {
+                                if (accounts.isEmpty()) {
                                     showAlert("SDK Unlock", "No account enrolled")
                                     currentRequest = 0
                                 } else {
                                     getPinWithCallback {
                                         try {
-                                            val extras: Array<ApproveInfo>? = try {
-                                                FuturaeClient.getExtraInfoFromOfflineQrcode(qrcode.rawValue)
+                                            val extras: List<ApproveInfo>? = try {
+                                                QRCodeUtils.getExtraInfoFromOfflineQrcode(qrcode.rawValue)
                                             } catch (e: MalformedQRCodeException) {
                                                 showErrorAlert("SDK Unlock", e)
                                                 currentRequest = 0
@@ -139,11 +139,11 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                         }
 
                         REQUEST_QR_OFFLINE_WITH_BIO -> {
-                            if (FuturaeClient.getQrcodeType(qrcode.rawValue) == FuturaeClient.QR_OFFLINE) {
+                            if (QRCodeUtils.getQrcodeType(qrcode.rawValue) == QRCodeUtils.QRType.Offline) {
                                 val qrCode = qrcode.rawValue
 
-                                val extras: Array<ApproveInfo>? = try {
-                                    FuturaeClient.getExtraInfoFromOfflineQrcode(qrCode)
+                                val extras: List<ApproveInfo>? = try {
+                                    QRCodeUtils.getExtraInfoFromOfflineQrcode(qrCode)
                                 } catch (e: MalformedQRCodeException) {
                                     showErrorAlert("SDK Unlock", e)
                                     currentRequest = 0
@@ -306,7 +306,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
         binding.buttonTotpOffline.setOnClickListener {
             getPinWithCallback {
                 val accounts = FuturaeSdkWrapper.client.accounts
-                if (accounts == null || accounts.size == 0) {
+                if (accounts.isEmpty()) {
                     showAlert("SDK Unlock", "No account enrolled")
                 } else {
                     val account = accounts[0]
@@ -315,7 +315,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                             FuturaeSdkWrapper.client.nextTotp(account.userId, it)
                         showAlert(
                             "TOTP",
-                            "Code: ${totp.getPasscode()}\nRemaining seconds: ${totp.getRemainingSecs()}"
+                            "Code: ${totp.passcode}\nRemaining seconds: ${totp.remainingSecs}"
                         )
                     } catch (e: LockOperationIsLockedException) {
                         showErrorAlert("SDK Unlock", e)
@@ -340,7 +340,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                     override fun onSuccess(result: Unit) {
                         showAlert("SDK Unlock", "Biometric auth activated")
                         binding.unlockMethodsValue.text =
-                            FuturaeSdkWrapper.client.activeUnlockMethods.joinToString()
+                            FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
                     }
 
                     override fun onError(throwable: Throwable) {
@@ -355,7 +355,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                 override fun onSuccess(result: Unit) {
                     showAlert("SDK Unlock", "Deactivated biometric authentication")
                     binding.unlockMethodsValue.text =
-                        FuturaeSdkWrapper.client.activeUnlockMethods.joinToString()
+                        FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
                 }
 
                 override fun onError(throwable: Throwable) {
@@ -363,21 +363,21 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                 }
             })
         }
-        binding.unlockMethodsValue.text = FuturaeSdkWrapper.client.activeUnlockMethods.joinToString()
+        binding.unlockMethodsValue.text = FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
         binding.buttonMigrationExecute.setOnClickListener {
             attemptRestoreAccounts()
         }
         binding.buttonUnlockMethods.setOnClickListener {
             showAlert(
                 "SDK Unlock",
-                "Active Unlock methods:\n" + FuturaeSdkWrapper.client.activeUnlockMethods.joinToString()
+                "Active Unlock methods:\n" + FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
             )
             binding.unlockMethodsValue.text =
-                FuturaeSdkWrapper.client.activeUnlockMethods.joinToString()
+                FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
         }
         binding.buttonTotpOfflineBio.setOnClickListener {
             val accounts = FuturaeSdkWrapper.client.accounts
-            if (accounts == null || accounts.size == 0) {
+            if (accounts.isEmpty()) {
                 showAlert("SDK Unlock", "No account enrolled")
             } else {
                 val account = accounts[0]
@@ -393,7 +393,7 @@ class FragmentSDKUnlockBioPin : FragmentSDKLockedFragment() {
                             override fun onSuccess(result: CurrentTotp) {
                                 showAlert(
                                     "TOTP",
-                                    "Code: ${result.getPasscode()}\nRemaining seconds: ${result.getRemainingSecs()}"
+                                    "Code: ${result.passcode}\nRemaining seconds: ${result.remainingSecs}"
                                 )
                             }
 

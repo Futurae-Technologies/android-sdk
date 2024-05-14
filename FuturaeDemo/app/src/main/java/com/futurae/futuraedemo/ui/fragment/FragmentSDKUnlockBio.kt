@@ -78,7 +78,7 @@ class FragmentSDKUnlockBio : FragmentSDKLockedFragment() {
         binding.buttonAccStatus.setOnClickListener {
             getAccountsStatus()
         }
-        binding.unlockMethodsValue.text = FuturaeSdkWrapper.client.activeUnlockMethods.joinToString()
+        binding.unlockMethodsValue.text = FuturaeSdkWrapper.client.getActiveUnlockMethods().joinToString()
     }
 
     override fun toggleAdaptiveButton(): MaterialButton = binding.buttonAdaptive

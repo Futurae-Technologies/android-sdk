@@ -1,12 +1,42 @@
 <resources>
-	<string name="app_name">FuturaeDemo</string>
+  <string name="app_name">FuturaeDemo</string>
 
-	<string name="qrcode_title">QR Code</string>
-	<string name="error_low_storage">QR code scanning cannot be performed due to low device storage</string>
+  <!--MAIN-->
+  <string name="main_btn_enroll">Enroll</string>
+  <string name="main_btn_qr_code">Scan to Enroll</string>
+  <string name="main_btn_totp">TOTP Auth</string>
+  <string name="main_btn_qr_code_auth">Online QR Code Auth</string>
+  <string name="main_btn_qr_code_offline_auth">Offline QR Code Auth</string>
+  <string name="main_btn_qr_code_generic">Scan QR Code</string>
+  <string name="main_btn_accounts_migration_check">Check account migration</string>
+  <string name="main_btn_accounts_migration_execute">Execute account migration</string>
+  <string name="main_btn_adaptive">Adaptive Overview</string>
 
-	<string name="menu_home">Home</string>
-	<string name="menu_settings">Settings</string>
-    <string name="channel_name">channel_futurae</string>
-	<string name="channel_description">futurae notifications</string>
+  <!--QR CODE-->
+  <string name="qrcode_title">QR Code</string>
+  <string name="camera_perm_explain">In order to scan a QR code, Futurae requires access to the camera.</string>
+  <string name="record_perm_explation">Your two factor authentication mechanism works by capturing and comparing the ambient noise, so, in order to function properly, it requires access to your phone\'s microphone. Please allow the permission upon prompt, or manually enabled it, via your phone settings.</string>
+
+  <!--ERRORS-->
+  <string name="error_low_storage">QR code scanning cannot be performed due to low device storage</string>
+    <string name="main_btn_logout">Logout</string>
+    <string name="main_btn_unlock_with_bio">Unlock with bio</string>
+
+  <string name="key_location">Location</string>
+  <string name="key_ble_devices">BLE Peripherals</string>
+  <string name="key_ble_scan">BLE Scan</string>
+  <string name="key_wifi_scan">Wifi Scan</string>
+  <string name="key_wifi_connected">Wifi Network Info</string>
+  <string name="key_time_left">Collection Session Info</string>
+  <string name="key_wifi_services">Network Services</string>
+
+  <string name="message_adaptive_guide">To start a collection, move the app to the background and then back to the foreground (ALT + TAB).</string>
+  <string name="message_adaptive_enroll">Enroll and account by scanning a QR code. Then the app will automatically link your collections to that account.</string>
+  <string name="status">status</string>
+  <string name="menu_home">Home</string>
+  <string name="menu_settings">Settings</string>
+  <string name="menu_history">History</string>
+  <string name="menu_live">Live</string>
+    <string name="message_collection_complete">Collection complete. You can View it in History Tab</string>
 
 </resources>

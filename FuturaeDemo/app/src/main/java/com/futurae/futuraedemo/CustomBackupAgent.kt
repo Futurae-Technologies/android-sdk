@@ -10,7 +10,6 @@ import kotlin.random.Random
 
 class CustomBackupAgent : BackupAgent() {
 
-    private val TAG = CustomBackupAgent::class.simpleName
     private val PREFS_BACKUP_KEY = "prefs_shared_prefs_backup_key"
 
     override fun onBackup(oldState: ParcelFileDescriptor?, data: BackupDataOutput, newState: ParcelFileDescriptor?) {
@@ -25,7 +24,7 @@ class CustomBackupAgent : BackupAgent() {
             sp.edit().putInt(PREF_RANDOM_STRING, randomInt).apply()
 
             val preferenceValue = randomInt.toString()
-            Timber.d("Starting backup of the prefs configuration in $PREFS_BACKUP_KEY, store: $randomInt as $preferenceValue")
+            Timber.d("Starting backup of the prefs configuration in " + PREFS_BACKUP_KEY + ", store: " + randomInt + " as " + preferenceValue)
 
             val bufStream = ByteArrayOutputStream()
             val outWriter = DataOutputStream(bufStream)
@@ -35,7 +34,7 @@ class CustomBackupAgent : BackupAgent() {
             data.writeEntityHeader(PREFS_BACKUP_KEY, len)
             data.writeEntityData(buffer, len)
         } catch (e: IOException) {
-            Timber.e("")
+            Timber.e(e)
             throw e
         }
     }

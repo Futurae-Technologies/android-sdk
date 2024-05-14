@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.futurae.futuraedemo.FuturaeSdkWrapper
 import com.futurae.futuraedemo.util.showAlert
@@ -20,8 +21,8 @@ import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.futuraedemo.util.toDialogMessage
 import com.futurae.sdk.FuturaeCallback
-import com.futurae.sdk.FuturaeClient
 import com.futurae.sdk.FuturaeResultCallback
+import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.adaptive.AdaptiveSDK
 import com.futurae.sdk.adaptive.CompletionCallback
 import com.futurae.sdk.adaptive.UpdateCallback
@@ -30,9 +31,18 @@ import com.futurae.sdk.approve.ApproveSession
 import com.futurae.sdk.exception.LockOperationIsLockedException
 import com.futurae.sdk.exception.LockUnexpectedException
 import com.futurae.sdk.model.SessionInfo
+import com.futurae.sdk.utils.FTUri
 import com.futurae.sdk.utils.NotificationUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import timber.log.Timber
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 abstract class FuturaeActivity : AppCompatActivity() {
 
@@ -117,7 +127,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
     fun onApproveAuth(session: ApproveSession, hasExtraInfo: Boolean, decryptedExtras: JSONArray?) {
         showDialog(
             "approve",
-            "Would you like to approve the request?${session.toDialogMessage()} \n extras: ${decryptedExtras?.toString()}",
+            "Would you like to approve the request?${session.toDialogMessage()} \n extras: ${decryptedExtras?.toString()} \n ",
             "Approve",
             { approveAuth(session) },
             "Deny",
@@ -155,47 +165,75 @@ abstract class FuturaeActivity : AppCompatActivity() {
     fun handleUri(uriCall: String) {
         onReceivedUri {
             if (uriCall.contains("enroll")) {
-                FuturaeClient.sharedClient().handleUri(uriCall, object : FuturaeCallback {
-                    override fun success() {
-                        showDialog("Success", "Successfully enrolled", "Ok", { })
+                FuturaeSDK.getClient().handleUri(uriCall, object : FuturaeCallback {
+                    override fun failure(throwable: Throwable?) {
+                        showDialog("Error", "Could not handle URI call", "Ok", { })
                     }
 
-                    override fun failure(throwable: Throwable) {
-                        showDialog("Error", "Could not handle URI call", "Ok", { })
+                    override fun success() {
+                        showDialog("Success", "Successfully enrolled", "Ok", { })
                     }
                 })
             } else if (uriCall.contains("auth")) {
 
-                val userId = FuturaeClient.getUserIdFromUri(uriCall)
-                val sessionToken = FuturaeClient.getSessionTokenFromUri(uriCall)
+                val userId = FTUri.getUserIdFromUri(uriCall)
+                val sessionToken = FTUri.getSessionTokenFromUri(uriCall)
 
-                FuturaeClient.sharedClient().sessionInfoByToken(userId, sessionToken,
-                    object : FuturaeResultCallback<SessionInfo?> {
-                        override fun success(sessionInfo: SessionInfo?) {
-                            if (sessionInfo == null) {
-                                showDialog(
-                                    "Something went wrong",
-                                    "Please try again",
-                                    "Ok",
-                                    { }
-                                )
-                                return
+                if(userId?.isNotBlank() == true && sessionToken?.isNotBlank() == true) {
+                    FuturaeSDK.getClient().sessionInfoByToken(userId, sessionToken,
+                        object : FuturaeResultCallback<SessionInfo> {
+                            override fun success(result: SessionInfo?) {
+                                if (result == null) {
+                                    return
+                                }
+                                val session = ApproveSession(result)
+                                if(session.hasExtraInfo()) {
+                                    showDialog(
+                                        "approve",
+                                        "Would you like to approve the request?${session.toDialogMessage()}",
+                                        "Approve",
+                                        {
+                                            FuturaeSDK.getClient().handleUri(uriCall, object : FuturaeCallback {
+                                                override fun failure(throwable: Throwable?) {
+                                                    showDialog("Error", "Could not handle URI call", "Ok", { })
+                                                }
+
+                                                override fun success() {
+                                                    showDialog("Success", "Successfully approved", "Ok", { })
+                                                }
+                                            })
+                                        },
+                                        "Cancel",
+                                        { })
+                                } else {
+                                    FuturaeSDK.getClient().handleUri(
+                                        uriCall,
+                                        object : FuturaeCallback {
+                                            override fun success() {
+                                                Toast.makeText(
+                                                    this@FuturaeActivity,
+                                                    "Approved",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+
+                                            override fun failure(throwable: Throwable?) {
+                                                Timber.e(throwable)
+                                            }
+
+                                        }
+                                    )
+                                }
+
                             }
 
-                            val session = ApproveSession(sessionInfo)
-                            showDialog(
-                                "approve",
-                                "Would you like to approve the request?${session.toDialogMessage()}",
-                                "Approve",
-                                { approveAuth(session) },
-                                "Deny",
-                                { rejectAuth(session) })
-                        }
-
-                        override fun failure(t: Throwable) {
-                            Timber.e(t)
-                        }
-                    })
+                            override fun failure(throwable: Throwable?) {
+                                Timber.e(throwable)
+                            }
+                        })
+                } else {
+                    showDialog("Error", "Uri did not contain userId and/or session token", "Ok", { })
+                }
             } else {
                 showDialog("Error", "Could not handle URI call", "Ok", { })
             }
@@ -235,8 +273,8 @@ abstract class FuturaeActivity : AppCompatActivity() {
     }
 
     protected fun onUnenroll(userId: String, deviceId: String) {
-        FuturaeClient.sharedClient().getAccountByUserIdAndDeviceId(userId, deviceId)?.let {
-            FuturaeClient.sharedClient().deleteAccount(it.userId)
+        FuturaeSDK.getClient().getAccountByUserIdAndDeviceId(userId, deviceId)?.let {
+            FuturaeSDK.getClient().deleteAccount(it.userId)
         }
     }
 
@@ -251,7 +289,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
                         adaptiveCollection = data
                     }
                 },
-                object : CompletionCallback{
+                object : CompletionCallback {
                     override fun onCollectionCompleted(data: AdaptiveCollection) {
                         adaptiveCollection = data
                     }
@@ -264,106 +302,133 @@ abstract class FuturaeActivity : AppCompatActivity() {
                 session.userId,
                 session.sessionId,
                 object : FuturaeResultCallback<SessionInfo> {
-                    override fun success(sessionInfo: SessionInfo) {
-                        FuturaeClient.sharedClient().rejectAuth(
-                            sessionInfo.userId,
-                            sessionInfo.sessionId,
-                            false,
-                            object : FuturaeCallback {
-                                override fun success() {
-                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
-                                        hideLoading()
-                                        showAdaptiveAuthDialog(adaptiveCollection!!)
-                                    } else {
-                                        Toast.makeText(
-                                            this@FuturaeActivity,
-                                            "Rejected",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
+                    override fun success(result: SessionInfo?) {
+                        val sessionInfo = result ?: return
+                        sessionInfo.userId?.let {
+                            FuturaeSDK.getClient().rejectAuth(
+                                it,
+                                sessionInfo.sessionId,
+                                false,
+                                object : FuturaeCallback {
 
-                                override fun failure(t: Throwable) {
-                                    Timber.e(t)
-                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
-                                        hideLoading()
-                                        showAdaptiveAuthDialog(adaptiveCollection!!, t)
-                                    } else {
-                                        showAlert("API Error", "Error: \n" + t.message)
+                                    override fun success() {
+                                        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
+                                            hideLoading()
+                                            showAdaptiveAuthDialog(adaptiveCollection!!)
+                                        } else {
+                                            Toast.makeText(
+                                                this@FuturaeActivity,
+                                                "Rejected",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
                                     }
-                                }
-                            }, sessionInfo.approveInfo
-                        )
+
+                                    override fun failure(throwable: Throwable?) {
+                                        val throwable = throwable ?: return
+                                        Timber.e(throwable)
+                                        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
+                                            hideLoading()
+                                            showAdaptiveAuthDialog(adaptiveCollection!!, throwable)
+                                        } else {
+                                            showErrorAlert("API Error", throwable)
+                                        }
+                                    }
+                                }, sessionInfo.approveInfo
+                            )
+                        } ?: showAlert("SDK Error", "Session info doesn't contain a userId.")
                     }
 
-                    override fun failure(t: Throwable) {
+                    override fun failure(throwable: Throwable?) {
                         hideLoading()
-                        showErrorAlert("API Error", t)
+                        throwable?.let { showErrorAlert("API Error", it ) }
                     }
                 })
     }
 
-    protected fun approveAuth(session: ApproveSession) {
-        var adaptiveCollection: AdaptiveCollection? = null
-        if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
-            showLoading()
-            // Calling this to register callback for the collection. For debugging purposes
-            AdaptiveSDK.requestAdaptiveCollection(
-                object : UpdateCallback {
-                    override fun onCollectionDataUpdated(data: AdaptiveCollection) {
-                        adaptiveCollection = data
-                    }
-                },
-                object : CompletionCallback{
-                    override fun onCollectionCompleted(data: AdaptiveCollection) {
-                        adaptiveCollection = data
-                    }
-                },
-                false
-            )
-        }
-        FuturaeSdkWrapper.client
-            .sessionInfoById(
-                session.userId,
-                session.sessionId,
-                object : FuturaeResultCallback<SessionInfo> {
-                    override fun success(sessionInfo: SessionInfo) {
-                        FuturaeClient.sharedClient().approveAuth(
-                            sessionInfo.userId,
-                            sessionInfo.sessionId,
-                            object : FuturaeCallback {
-                                override fun success() {
-                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
-                                        hideLoading()
-                                        showAdaptiveAuthDialog(adaptiveCollection!!)
-                                    } else {
-                                        Toast.makeText(
-                                            this@FuturaeActivity,
-                                            "Approved",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
+    private fun showAlertOnUIThread(title: String, message: String) {
+        showAlert(title, message)
+    }
 
-                                override fun failure(t: Throwable) {
-                                    Timber.e(t)
-                                    if (FuturaeSdkWrapper.sdk.isAdaptiveEnabled()) {
-                                        hideLoading()
-                                        showAdaptiveAuthDialog(adaptiveCollection!!, t)
-                                    } else {
-                                        showAlert("API Error", "Error: \n" + t.message)
-                                    }
-                                }
-                            }, sessionInfo.approveInfo
+    protected fun approveAuth(session: ApproveSession) = lifecycleScope.launch {
+        val userIdInSession = session.userId
+        if (userIdInSession == null) {
+            showAlertOnUIThread("API Error", "ApproveSession is incomplete" )
+            return@launch
+        }
+
+        val sessionInfoResult = try {
+            FuturaeSdkWrapper.coroutines.sessionInfoById(
+                session.userId,
+                session.sessionId
+            ).getOrThrow()
+        } catch (t: Throwable) {
+            Timber.e(t)
+            showAlertOnUIThread("API Error", "Error: \n" + t.message)
+            return@launch
+        }
+
+        val userMultinumberChallengeInputOrNull = sessionInfoResult.multiNumberedChallenge?.let {
+            getMultiEnrollResponseViaDialog(it.map { number -> number.toString() })
+        }
+
+        try {
+            FuturaeSdkWrapper.coroutines.approveAuth(
+                userIdInSession,
+                session.sessionId,
+                sessionInfoResult.approveInfo,
+                userMultinumberChallengeInputOrNull
+            )
+        } catch (t: Throwable) {
+            Timber.e(t)
+
+            withContext(Dispatchers.Main) {
+                showAlert("API Error", "Error: \n" + t.message)
+            }
+
+            return@launch
+        }
+
+        showApprovedToast()
+    }
+
+    private suspend fun showApprovedToast()
+        = withContext(Dispatchers.Main)  {
+        Toast.makeText(
+            this@FuturaeActivity,
+            "Approved",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private suspend fun getMultiEnrollResponseViaDialog(
+        items: List<String>
+    ): Int = withContext(Dispatchers.Main) {
+        return@withContext suspendCoroutine { continuation ->
+            val alertDialog = AlertDialog.Builder(this@FuturaeActivity)
+                    .setItems(items.toTypedArray()) { _, itemIndex ->
+                        val selectedItem = items.getOrNull(itemIndex)
+                        if (selectedItem == null) {
+                            continuation.resumeWithException(
+                                IllegalStateException("UI Error: nonexistent item selected")
+                            )
+                            return@setItems
+                        }
+                        continuation.resume(
+                            selectedItem.toInt()
                         )
                     }
-
-                    override fun failure(t: Throwable) {
-                        Timber.e(t)
-                        hideLoading()
-                        showAlert("API Error", "Error: \n" + t.message)
+                    .setCancelable(true)
+                    .setTitle("Select a number you see on the website")
+                    .setOnCancelListener {
+                        continuation.resumeWithException(
+                            IllegalArgumentException("Multi numbered challenge not provided")
+                        )
                     }
-                })
+                    .create()
+
+            alertDialog.show()
+        }
     }
 
     abstract fun showLoading()

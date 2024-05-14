@@ -32,7 +32,7 @@ class ActivityAccountHistory : FuturaeActivity() {
         binding.recyclerView.isVisible = false
         binding.recyclerView.adapter = adapter
         binding.recyclerView.addItemDecoration(DividerItemDecoration(this, DividerItemDecoration.VERTICAL))
-        FuturaeSdkWrapper.client.accounts.first()?.let {
+        FuturaeSdkWrapper.client.accounts.firstOrNull()?.let {
             FuturaeSdkWrapper.client.getAccountHistory(it.userId, object : Callback<List<AccountHistory>> {
                 override fun onSuccess(result: List<AccountHistory>) {
                     if (result.isNotEmpty()) {
