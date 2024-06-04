@@ -11,8 +11,8 @@ android {
         applicationId "com.futurae.futuraedemo"
         minSdkVersion 23
         targetSdkVersion 34
-        versionCode 259
-        versionName "2.5.9"
+        versionCode 260
+        versionName "2.5.10"
 
         resValue "string", "sdk_id", "$SDK_ID"
         resValue "string", "sdk_key", "$SDK_KEY"
@@ -97,7 +97,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-messaging-ktx'
 
     // Futurae SDK
-    implementation 'com.futurae.sdk:futuraekit:2.5.9'
+    implementation 'com.futurae.sdk:futuraekit:2.5.10'
     // OPTIONAL - Adaptive SDK.
     implementation 'com.futurae.sdk:adaptive:1.0.2-alpha'
     implementation 'androidx.navigation:navigation-fragment-ktx:2.7.7'
