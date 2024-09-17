@@ -61,6 +61,7 @@ class FragmentConfiguration : Fragment() {
                         .setInvalidatedByBiometricChange(binding.checkboxBioInvalidation.isChecked)
                         .setUnlockedDeviceRequired(binding.checkboxDeviceUnlocked.isChecked)
                         .setSkipHardwareSecurity(binding.checkboxSkipHardwareStorage.isChecked)
+                        .setAllowChangePinCodeWithBiometricUnlock(binding.checkboxAllowBiometricChangePin.isChecked)
                         .build()
                 listener?.onConfigurationSelected(sdkConfig)
             } catch (e: Exception) {

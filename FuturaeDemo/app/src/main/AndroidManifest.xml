@@ -10,6 +10,8 @@
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <!-- START ADAPTIVE PERMISSIONS -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -58,7 +60,7 @@
 
         <activity
             android:name=".ui.activity.MainActivity"
-            android:launchMode="singleTask"
+            android:launchMode="singleTop"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -89,15 +91,19 @@
             android:exported="false" />
 
         <activity
-            android:name=".ui.activity.AdaptiveViewerActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.activity.AdaptiveCollectionDetailsActivity"
-            android:exported="false" />
-
-        <activity
             android:name=".ui.activity.ActivityAccountHistory"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.activity.adaptive.AdaptiveOverviewActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.activity.adaptive.AdaptiveCollectionsOverviewActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.activity.adaptive.AdaptiveCollectionDetailsActivity"
             android:exported="false" />
 
     </application>

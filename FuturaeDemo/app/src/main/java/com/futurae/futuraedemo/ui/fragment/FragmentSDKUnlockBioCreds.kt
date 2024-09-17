@@ -33,7 +33,7 @@ class FragmentSDKUnlockBioCreds : FragmentSDKOperations() {
             lifecycleScope.launch {
                 try {
                     FuturaeSDK.client.lockApi.unlock(
-                        WithBiometricsOrDeviceCredentials(
+                        userPresenceVerificationMode = WithBiometricsOrDeviceCredentials(
                             PresentationConfigurationForDeviceCredentialsPrompt(
                                 requireActivity(),
                                 "Unlock SDK",
@@ -43,6 +43,9 @@ class FragmentSDKUnlockBioCreds : FragmentSDKOperations() {
                         ),
                         shouldWaitForSDKSync = true
                     ).await()
+                    if (FuturaeSDK.client.adaptiveApi.isAdaptiveEnabled()) {
+                        FuturaeSDK.client.adaptiveApi.collectAndSubmitObservations()
+                    }
                 } catch (t: Throwable) {
                     showErrorAlert("SDK Unlock", t)
                 }
@@ -53,6 +56,9 @@ class FragmentSDKUnlockBioCreds : FragmentSDKOperations() {
         }
         binding.buttonEnroll.setOnClickListener {
             scanQRCode()
+        }
+        binding.buttonEnrollActivation.setOnClickListener {
+            onActivationCodeEnroll()
         }
         binding.buttonEnrollManual.setOnClickListener {
             onManualEntryEnroll()
@@ -79,14 +85,8 @@ class FragmentSDKUnlockBioCreds : FragmentSDKOperations() {
             FuturaeSDK.client.lockApi.getActiveUnlockMethods().joinToString()
     }
 
-    override fun toggleAdaptiveButton(): MaterialButton = binding.buttonAdaptive
-
-    override fun viewAdaptiveCollectionsButton(): MaterialButton =
-        binding.buttonViewAdaptiveCollections
-
-    override fun setAdaptiveThreshold(): MaterialButton = binding.buttonConfigureAdaptiveTime
-
     override fun serviceLogoButton(): MaterialButton = binding.buttonServiceLogo
     override fun timeLeftView(): TextView = binding.textTimerValue
     override fun sdkStatus(): TextView = binding.textStatusValue
+    override fun accountInfoButton(): View = binding.buttonAccountInfo
 }

@@ -30,6 +30,7 @@ class FragmentSDKUnlockBio : FragmentSDKOperations() {
     override fun timeLeftView(): TextView = binding.textTimerValue
 
     override fun sdkStatus(): TextView = binding.textStatusValue
+    override fun accountInfoButton(): View = binding.buttonAccountInfo
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -37,17 +38,20 @@ class FragmentSDKUnlockBio : FragmentSDKOperations() {
             lifecycleScope.launch {
                 try {
                     FuturaeSDK.client.lockApi.unlock(
-                        WithBiometrics(
+                        userPresenceVerificationMode = WithBiometrics(
                             PresentationConfigurationForBiometricsPrompt(
                                 requireActivity(),
                                 "Unlock SDK",
                                 "Authenticate with biometrics",
                                 "Authentication is required to unlock SDK operations",
                                 "cancel",
-                            ),
+                            )
                         ),
                         shouldWaitForSDKSync = true
                     ).await()
+                    if (FuturaeSDK.client.adaptiveApi.isAdaptiveEnabled()) {
+                        FuturaeSDK.client.adaptiveApi.collectAndSubmitObservations()
+                    }
                 } catch (t: Throwable) {
                     showErrorAlert("SDK Unlock", t)
                 }
@@ -58,6 +62,9 @@ class FragmentSDKUnlockBio : FragmentSDKOperations() {
         }
         binding.buttonEnroll.setOnClickListener {
             scanQRCode()
+        }
+        binding.buttonEnrollActivation.setOnClickListener {
+            onActivationCodeEnroll()
         }
         binding.buttonEnrollManual.setOnClickListener {
             onManualEntryEnroll()
@@ -83,13 +90,6 @@ class FragmentSDKUnlockBio : FragmentSDKOperations() {
         binding.unlockMethodsValue.text =
             FuturaeSDK.client.lockApi.getActiveUnlockMethods().joinToString()
     }
-
-    override fun toggleAdaptiveButton(): MaterialButton = binding.buttonAdaptive
-
-    override fun viewAdaptiveCollectionsButton(): MaterialButton =
-        binding.buttonViewAdaptiveCollections
-
-    override fun setAdaptiveThreshold(): MaterialButton = binding.buttonConfigureAdaptiveTime
 
     override fun serviceLogoButton(): MaterialButton = binding.buttonServiceLogo
 }

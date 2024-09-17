@@ -8,11 +8,11 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.core.view.isVisible
 import com.futurae.futuraedemo.R
 import com.futurae.futuraedemo.databinding.ActivityFragmentContainerBinding
 import com.futurae.futuraedemo.ui.fragment.FragmentConfiguration
 import com.futurae.futuraedemo.ui.fragment.FragmentMain
+import com.futurae.futuraedemo.ui.fragment.FragmentPin
 import com.futurae.futuraedemo.ui.fragment.FragmentSettings
 import com.futurae.futuraedemo.ui.qr_push_action.QRCodeFlowOpenCoordinator
 import com.futurae.futuraedemo.ui.qr_push_action.QRCodeRequestedActionHandler
@@ -22,14 +22,19 @@ import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.sdk.Callback
 import com.futurae.sdk.FuturaeSDK
+import com.futurae.sdk.public_api.common.LockConfigurationType.*
 import com.futurae.sdk.public_api.common.SDKConfiguration
+import com.futurae.sdk.public_api.common.model.PresentationConfigurationForBiometricsPrompt
+import com.futurae.sdk.public_api.common.model.PresentationConfigurationForDeviceCredentialsPrompt
 import com.futurae.sdk.public_api.exception.FTCorruptedStateException
 import com.futurae.sdk.public_api.exception.FTInvalidStateException
 import com.futurae.sdk.public_api.exception.FTKeyNotFoundException
 import com.futurae.sdk.public_api.exception.FTKeystoreOperationException
 import com.futurae.sdk.public_api.exception.FTLockInvalidConfigurationException
 import com.futurae.sdk.public_api.exception.FTLockMechanismUnavailableException
-
+import com.futurae.sdk.public_api.lock.model.WithBiometrics
+import com.futurae.sdk.public_api.lock.model.WithBiometricsOrDeviceCredentials
+import com.futurae.sdk.public_api.lock.model.WithSDKPin
 
 class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, FragmentSettings.Listener {
 
@@ -77,7 +82,7 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
         // handling when activity was launched when intent came in
@@ -102,14 +107,6 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
             .beginTransaction()
             .replace(R.id.fragmentContainer, FragmentConfiguration())
             .commit()
-    }
-
-    override fun showLoading() {
-        binding.progressLayout.isVisible = true
-    }
-
-    override fun hideLoading() {
-        binding.progressLayout.isVisible = false
     }
 
     override fun onConfigurationSelected(sdkConfiguration: SDKConfiguration) {
@@ -138,24 +135,61 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
                 is FTKeyNotFoundException -> showErrorAlert("SDK Missing Key", e)
                 // Indicates that the SDK is in a corrupted state and should attempt to recover
                 is FTCorruptedStateException -> {
-                    FuturaeSDK.launchAccountRecovery(
-                        application,
-                        sdkConfiguration,
-                        object : Callback<Unit> {
-                            override fun onSuccess(result: Unit) {
-                                onSDKLaunched(sdkConfiguration)
-                            }
-
-                            override fun onError(throwable: Throwable) {
-                                showErrorAlert("SDK Recovery failed", throwable)
-                            }
-
+                    if (sdkConfiguration.lockConfigurationType == SDK_PIN_WITH_BIOMETRICS_OPTIONAL) {
+                        getPinWithCallback {
+                            attemptSDKRecovery(sdkConfiguration, it)
                         }
-                    )
+                    } else {
+                        attemptSDKRecovery(sdkConfiguration, null)
+                    }
                 }
+
                 else -> showErrorAlert("SDK initialization failed", e)
             }
         }
+    }
+
+    private fun attemptSDKRecovery(sdkConfiguration: SDKConfiguration, sdkPin: CharArray?) {
+        val userPresenceVerificationMode = when (sdkConfiguration.lockConfigurationType) {
+            NONE -> null
+            BIOMETRICS_ONLY -> WithBiometrics(
+                PresentationConfigurationForBiometricsPrompt(
+                    this,
+                    "SDK Recovery",
+                    "Authenticate to recover",
+                    "Authenticate to recover",
+                    "Cancel",
+                )
+            )
+
+            BIOMETRICS_OR_DEVICE_CREDENTIALS -> WithBiometricsOrDeviceCredentials(
+                PresentationConfigurationForDeviceCredentialsPrompt(
+                    this,
+                    "SDK Recovery",
+                    "Authenticate to recover",
+                    "Authenticate to recover",
+                )
+            )
+
+            SDK_PIN_WITH_BIOMETRICS_OPTIONAL -> sdkPin?.let {
+                WithSDKPin(it)
+            }
+                ?: throw IllegalStateException("Unable to recover without SDK PIN for provided SDKConfiguration")
+        }
+        FuturaeSDK.launchAccountRecovery(
+            application,
+            sdkConfiguration,
+            userPresenceVerificationMode,
+            object : Callback<Unit> {
+                override fun onSuccess(result: Unit) {
+                    onSDKLaunched(sdkConfiguration)
+                }
+
+                override fun onError(throwable: Throwable) {
+                    showErrorAlert("SDK Recovery failed", throwable)
+                }
+            }
+        )
     }
 
     override fun onSDKReset() {
@@ -217,4 +251,17 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
 
     }
 
+    protected fun getPinWithCallback(callback: (CharArray) -> Unit) {
+        val pinFragment = FragmentPin()
+        supportFragmentManager.beginTransaction()
+            .add(R.id.fragmentContainer, pinFragment.apply {
+                listener = object : FragmentPin.Listener {
+                    override fun onPinComplete(pin: CharArray) {
+                        parentFragmentManager.beginTransaction().remove(pinFragment).commit()
+                        callback(pin)
+                    }
+                }
+            })
+            .commit()
+    }
 }

@@ -18,18 +18,17 @@ import com.bumptech.glide.Glide
 import com.futurae.futuraedemo.R
 import com.futurae.futuraedemo.ui.AccountSelectionSheet
 import com.futurae.futuraedemo.ui.activity.ActivityAccountHistory
-import com.futurae.futuraedemo.ui.activity.AdaptiveViewerActivity
 import com.futurae.futuraedemo.ui.activity.FTRQRCodeActivity
 import com.futurae.futuraedemo.ui.activity.FuturaeActivity
 import com.futurae.futuraedemo.ui.qr_push_action.QRCodeFlowOpenCoordinator
 import com.futurae.futuraedemo.util.LocalStorage
+import com.futurae.futuraedemo.util.getParcelable
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.futuraedemo.util.showInputDialog
 import com.futurae.futuraedemo.util.toDialogMessage
 import com.futurae.sdk.FuturaeSDK
-import com.futurae.sdk.adaptive.AdaptiveSDK
 import com.futurae.sdk.public_api.account.model.AccountsStatus
 import com.futurae.sdk.public_api.account.model.ActivationCode
 import com.futurae.sdk.public_api.account.model.EnrollAccount
@@ -55,7 +54,6 @@ import com.futurae.sdk.public_api.session.model.SessionInfoQuery
 import com.futurae.sdk.utils.FTQRCodeUtils
 import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.slider.Slider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -66,12 +64,11 @@ import timber.log.Timber
  * can implement only the lock/unlocking flow.
  */
 abstract class FragmentSDKOperations : BaseFragment() {
-    abstract fun toggleAdaptiveButton(): MaterialButton
-    abstract fun viewAdaptiveCollectionsButton(): MaterialButton
-    abstract fun setAdaptiveThreshold(): MaterialButton
     abstract fun serviceLogoButton(): MaterialButton
     abstract fun timeLeftView(): TextView
     abstract fun sdkStatus(): TextView
+    abstract fun accountInfoButton(): View
+
 
     protected val localStorage: LocalStorage by lazy {
         LocalStorage(requireContext())
@@ -88,55 +85,6 @@ abstract class FragmentSDKOperations : BaseFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        toggleAdaptiveButton().setOnClickListener {
-            if (FuturaeSDK.isAdaptiveEnabled()) {
-                FuturaeSDK.disableAdaptive()
-                toggleAdaptiveButton().text = "Enable Adaptive"
-            } else {
-                FuturaeSDK.enableAdaptive(requireActivity().application)
-                toggleAdaptiveButton().text = "Disable Adaptive"
-            }
-        }
-        viewAdaptiveCollectionsButton().setOnClickListener {
-            if (FuturaeSDK.isAdaptiveEnabled()) {
-                startActivity(
-                    Intent(context, AdaptiveViewerActivity::class.java)
-                )
-            } else {
-                showAlert("Adaptive", "Please enable Adaptive to see your collections.")
-            }
-        }
-        toggleAdaptiveButton().text =
-            if (FuturaeSDK.isAdaptiveEnabled()) "Disable Adaptive" else "Enable Adaptive"
-
-        setAdaptiveThreshold().setOnClickListener {
-            if (FuturaeSDK.isAdaptiveEnabled()) {
-                var sliderValue = AdaptiveSDK.getAdaptiveCollectionThreshold()
-                val dialogView = layoutInflater.inflate(R.layout.dialog_adaptive_time, null)
-                val textValue = dialogView.findViewById<TextView>(R.id.sliderValue).apply {
-                    text = "$sliderValue sec"
-                }
-                dialogView.findViewById<Slider>(R.id.slider).apply {
-                    value = sliderValue.toFloat()
-                    addOnChangeListener { _, value, _ ->
-                        sliderValue = value.toInt()
-                        textValue.text = "${value.toInt()} sec"
-                    }
-                }
-                val dialog = AlertDialog.Builder(
-                    requireContext(),
-                    com.google.android.material.R.style.Theme_Material3_Light_Dialog
-                )
-                    .setTitle("Adaptive time threshold").setView(dialogView)
-                    .setPositiveButton("OK") { dialog, which ->
-                        AdaptiveSDK.setAdaptiveCollectionThreshold(sliderValue)
-                    }.create()
-                dialog.show()
-            } else {
-                showAlert("Adaptive SDK", "Please initialize/enable Adaptive SDK first")
-            }
-        }
-
         serviceLogoButton().setOnClickListener {
             val ftAccounts = getAccounts()
             if (ftAccounts.isNotEmpty()) {
@@ -151,10 +99,40 @@ abstract class FragmentSDKOperations : BaseFragment() {
                         com.google.android.material.R.style.Theme_Material3_Light_Dialog
                     )
                         .setTitle("Service Logo")
-                        .setView(dialogView).setPositiveButton("OK") { dialog, which ->
+                        .setView(dialogView).setPositiveButton("OK") { dialog, _ ->
                             dialog.dismiss()
                         }.create()
                 dialog.show()
+            } else {
+                Toast.makeText(requireContext(), "No account enrolled", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        accountInfoButton().setOnClickListener {
+            val ftAccounts = getAccounts()
+            if (ftAccounts.isNotEmpty()) {
+                val ftAccount = ftAccounts.first()
+                showAlert(
+                    "Account Info",
+                    ("Account id: ${ftAccount.userId}," +
+                            "\nAccount username: ${ftAccount.username}," +
+                            "\nService name: ${ftAccount.serviceName}").trimIndent()
+                )
+            } else {
+                Toast.makeText(requireContext(), "No account enrolled", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        accountInfoButton().setOnClickListener {
+            val ftAccounts = getAccounts()
+            if (ftAccounts.isNotEmpty()) {
+                val ftAccount = ftAccounts.first()
+                showAlert(
+                    "Account Info",
+                    ("Account id: ${ftAccount.userId}," +
+                            "\nAccount username: ${ftAccount.username}," +
+                            "\nService name: ${ftAccount.serviceName}").trimIndent()
+                )
             } else {
                 Toast.makeText(requireContext(), "No account enrolled", Toast.LENGTH_SHORT).show()
             }
@@ -194,7 +172,7 @@ abstract class FragmentSDKOperations : BaseFragment() {
                         val sessionInfos = accountsStatus.statuses.first().activeSessions
                         if (sessionInfos.isNotEmpty()) {
                             val session = ApproveSession(sessionInfos.first())
-                            (activity as FuturaeActivity).onApproveAuth(
+                            (activity as FuturaeActivity).showApproveAuthConfirmationDialog(
                                 session,
                                 null
                             )
@@ -228,24 +206,6 @@ abstract class FragmentSDKOperations : BaseFragment() {
         getQRCodeCallback.launch(
             FTRQRCodeActivity.getIntent(requireContext(), true, false),
         )
-    }
-
-    protected fun onLogout() {
-        // For demo purposes, we simply logout the first account we can find
-        val accounts = getAccounts()
-        if (accounts.isEmpty()) {
-            showAlert("Error", "No account to logout")
-            return
-        }
-        lifecycleScope.launch {
-            val account = accounts[0]
-            try {
-                FuturaeSDK.client.accountApi.logoutAccount(account.userId).await()
-                showAlert("Success", "Logged out " + account.username)
-            } catch (t: Throwable) {
-                showErrorAlert("SDK Unlock", t)
-            }
-        }
     }
 
     protected fun onTOTPAuth() {
@@ -396,7 +356,10 @@ abstract class FragmentSDKOperations : BaseFragment() {
 
     // QRCode callbacks
     private fun onEnrollQRCodeScanned(data: Intent) {
-        (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
+        data.getParcelable(
+            FTRQRCodeActivity.PARAM_BARCODE,
+            Barcode::class.java
+        )?.let { qrcode ->
             requireContext().showInputDialog("Flow Binding Token") { token ->
                 lifecycleScope.launch {
                     try {
@@ -427,6 +390,7 @@ abstract class FragmentSDKOperations : BaseFragment() {
             } else {
                 EnrollAccount
             }
+
             requireContext().showInputDialog("Flow Binding Token") { token ->
                 lifecycleScope.launch {
                     try {
@@ -446,8 +410,40 @@ abstract class FragmentSDKOperations : BaseFragment() {
         }
     }
 
+    protected fun onActivationCodeEnroll(sdkPin: CharArray? = null) {
+        requireContext().showInputDialog("Activation code") { code ->
+            val enrollUseCase = if (sdkPin != null) {
+                EnrollAccountAndSetupSDKPin(
+                    sdkPin = sdkPin
+                )
+            } else {
+                EnrollAccount
+            }
+
+            requireContext().showInputDialog("Flow Binding Token") { token ->
+                lifecycleScope.launch {
+                    try {
+                        FuturaeSDK.client.accountApi.enrollAccount(
+                            enrollmentParameters = EnrollmentParams(
+                                ActivationCode(code),
+                                enrollUseCase,
+                                token
+                            )
+                        ).await()
+                        showToast("Enrolled")
+                    } catch (t: Throwable) {
+                        showErrorAlert("Enroll Error", t)
+                    }
+                }
+            }
+        }
+    }
+
     private fun onAuthQRCodeScanned(data: Intent) {
-        (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
+        data.getParcelable(
+            FTRQRCodeActivity.PARAM_BARCODE,
+            Barcode::class.java
+        )?.let { qrcode ->
             val userId: String?
             val sessionToken: String?
             try {
@@ -523,16 +519,17 @@ abstract class FragmentSDKOperations : BaseFragment() {
     }
 
     protected fun onAnonymousQRCodeScanned(data: Intent) {
-        (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { barcode ->
-            val modalBottomSheet = AccountSelectionSheet().apply {
-                listener = object : AccountSelectionSheet.Listener {
-                    override fun onAccountSelected(userId: String) {
-                        handleUsernamelessQr(barcode.rawValue, userId)
+        data.getParcelable(FTRQRCodeActivity.PARAM_BARCODE, Barcode::class.java)
+            ?.let { barcode ->
+                val modalBottomSheet = AccountSelectionSheet().apply {
+                    listener = object : AccountSelectionSheet.Listener {
+                        override fun onAccountSelected(userId: String) {
+                            handleUsernamelessQr(barcode.rawValue, userId)
+                        }
                     }
                 }
+                modalBottomSheet.show(childFragmentManager, AccountSelectionSheet.TAG)
             }
-            modalBottomSheet.show(childFragmentManager, AccountSelectionSheet.TAG)
-        }
     }
 
     private fun handleUsernamelessQr(qrCode: String, userId: String) {
@@ -590,7 +587,10 @@ abstract class FragmentSDKOperations : BaseFragment() {
     }
 
     protected fun onOfflineAuthQRCodeScanned(data: Intent) {
-        (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { barcode ->
+        data.getParcelable(
+            FTRQRCodeActivity.PARAM_BARCODE,
+            Barcode::class.java
+        )?.let { barcode ->
             val qrCode = barcode.rawValue
             val extras: List<ApproveInfo>? = try {
                 FuturaeSDK.client.sessionApi.extractQRCodeExtraInfo(qrCode)
@@ -629,12 +629,16 @@ abstract class FragmentSDKOperations : BaseFragment() {
     }
 
     protected fun onQRCodeScanned(data: Intent) {
-        (data.getParcelableExtra(FTRQRCodeActivity.PARAM_BARCODE) as? Barcode)?.let { qrcode ->
+        data.getParcelable(
+            FTRQRCodeActivity.PARAM_BARCODE,
+            Barcode::class.java
+        )?.let { qrcode ->
             when (FTQRCodeUtils.getQrcodeType(qrcode.rawValue)) {
                 FTQRCodeUtils.QRType.Enroll -> onEnrollQRCodeScanned(data)
                 FTQRCodeUtils.QRType.Offline -> onOfflineAuthQRCodeScanned(data)
                 FTQRCodeUtils.QRType.Online -> onAuthQRCodeScanned(data)
                 FTQRCodeUtils.QRType.Usernameless -> onAnonymousQRCodeScanned(data)
+                FTQRCodeUtils.QRType.Invalid -> showErrorAlert("QR Code Error", IllegalStateException("Invalid QR code. Matches none of know types."))
             }
         }
     }

@@ -2,10 +2,13 @@ package com.futurae.futuraedemo.util
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.os.Looper
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import com.futurae.sdk.public_api.session.model.ApproveSession
+import com.futurae.sdk.utils.FTNotificationUtils.PARAM_APPROVE_SESSION
 import timber.log.Timber
 
 fun Context.showDialog(
@@ -19,12 +22,12 @@ fun Context.showDialog(
     val builder = AlertDialog.Builder(this)
         .setTitle(title)
         .setMessage(message)
-        .setPositiveButton(positiveButton) { dialog, which ->
+        .setPositiveButton(positiveButton) { dialog, _ ->
             positiveButtonCallback.invoke()
             dialog.dismiss()
         }
     if (negativeButton != null && negativeButtonCallback != null) {
-        builder.setNegativeButton(negativeButton) { dialog, which ->
+        builder.setNegativeButton(negativeButton) { dialog, _ ->
             negativeButtonCallback.invoke()
             dialog.dismiss()
         }
@@ -42,7 +45,7 @@ fun Context.showAlert(
         AlertDialog.Builder(this)
                 .setTitle(title)
                 .setMessage(message)
-                .setPositiveButton("ok") { dialog, which ->
+                .setPositiveButton("ok") { dialog, _ ->
                     dialog.dismiss()
                 }
                 .create()
@@ -57,9 +60,6 @@ fun Fragment.showAlert(
     Timber.i(message)
     val context = this.context ?: return
     context.showAlert(title, message)
-    if(this.isResumed) {
-        requireContext().showAlert(title, message)
-    }
 }
 
 fun Fragment.showErrorAlert(
@@ -69,9 +69,6 @@ fun Fragment.showErrorAlert(
     Timber.e(throwable)
     val context = this.context ?: return
     context.showAlert(title, "Error:\n${throwable.localizedMessage}")
-    if(this.isResumed) {
-        requireContext().showAlert(title, "Error:\n${throwable.localizedMessage}")
-    }
 }
 
 fun Activity.showErrorAlert(
@@ -107,4 +104,12 @@ fun ApproveSession.toDialogMessage() = buildString {
         "${it.key}: ${it.value}"
     } ?: "")
     append("\nTimeout: $sessionTimeout")
+}
+
+fun <T> Intent.getParcelable(key: String, typeClass: Class<T>) : T? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        getParcelableExtra(key, typeClass)
+    } else {
+        getParcelableExtra(key)
+    }
 }

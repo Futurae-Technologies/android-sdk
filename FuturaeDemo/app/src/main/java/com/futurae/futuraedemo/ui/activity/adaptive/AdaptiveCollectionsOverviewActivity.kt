@@ -1,4 +1,4 @@
-package com.futurae.futuraedemo.ui.activity
+package com.futurae.futuraedemo.ui.activity.adaptive
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -8,20 +8,21 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.futurae.futuraedemo.databinding.ActivityAdaptiveOverviewBinding
+import com.futurae.futuraedemo.databinding.ActivityAdaptiveCollectionsListBinding
 import com.futurae.futuraedemo.databinding.ItemAdaptiveCollectionBinding
+import com.futurae.futuraedemo.ui.activity.FuturaeActivity
 import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.adaptive.AdaptiveDbHelper
 import com.futurae.sdk.adaptive.model.AdaptiveCollection
 import com.google.gson.GsonBuilder
-import java.text.SimpleDateFormat
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
-class AdaptiveViewerActivity : FuturaeActivity() {
+class AdaptiveCollectionsOverviewActivity : FuturaeActivity() {
 
-    lateinit var binding: ActivityAdaptiveOverviewBinding
+    lateinit var binding: ActivityAdaptiveCollectionsListBinding
 
     private val adapter = AdaptiveCollectionAdapter {
         startActivity(
@@ -29,17 +30,9 @@ class AdaptiveViewerActivity : FuturaeActivity() {
         )
     }
 
-    override fun showLoading() {
-        binding.progressLayout.isVisible = true
-    }
-
-    override fun hideLoading() {
-        binding.progressLayout.isVisible = false
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityAdaptiveOverviewBinding.inflate(layoutInflater)
+        binding = ActivityAdaptiveCollectionsListBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         binding.recycler.adapter = adapter
@@ -56,9 +49,10 @@ class AdaptiveViewerActivity : FuturaeActivity() {
                 binding.clearCollections.isVisible = it.isNotEmpty()
                 adapter.submitList(it.sortedBy { coll -> coll.timestamp })
 
-                if(it.isEmpty()) {
-                    if(FuturaeSDK.client.accountApi.getActiveAccounts().isEmpty()) {
-                        binding.emptyText.text = "You must enroll an account before gathering collections"
+                if (it.isEmpty()) {
+                    if (FuturaeSDK.client.accountApi.getActiveAccounts().isEmpty()) {
+                        binding.emptyText.text =
+                            "You must enroll an account before gathering collections"
                     } else {
                         binding.emptyText.text = "No collections yet"
                     }
@@ -95,9 +89,16 @@ class AdaptiveCollectionAdapter(
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AdaptiveCollectionViewHolder {
+    override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int
+    ): AdaptiveCollectionViewHolder {
         return AdaptiveCollectionViewHolder(
-            ItemAdaptiveCollectionBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            ItemAdaptiveCollectionBinding.inflate(
+                LayoutInflater.from(parent.context),
+                parent,
+                false
+            )
         ).apply {
             this.binding.root.setOnClickListener {
                 onItemTapped(getItem(adapterPosition))

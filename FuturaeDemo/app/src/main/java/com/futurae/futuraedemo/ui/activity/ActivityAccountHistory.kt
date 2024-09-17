@@ -29,7 +29,6 @@ class ActivityAccountHistory : FuturaeActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityHistoryBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        binding.progress.isVisible = true
         binding.emptyText.isVisible = false
         binding.recyclerView.isVisible = false
         binding.recyclerView.adapter = adapter
@@ -45,11 +44,9 @@ class ActivityAccountHistory : FuturaeActivity() {
                     val accountHistoryItems =
                         FuturaeSDK.client.accountApi.getAccountHistory(it.userId).await()
                     if (accountHistoryItems.isNotEmpty()) {
-                        binding.progress.isVisible = false
                         binding.emptyText.isVisible = false
                         binding.recyclerView.isVisible = true
                     } else {
-                        binding.progress.isVisible = false
                         binding.emptyText.isVisible = true
                         binding.recyclerView.isVisible = false
                     }
@@ -61,14 +58,6 @@ class ActivityAccountHistory : FuturaeActivity() {
             }
         }
 
-    }
-
-    override fun showLoading() {
-        binding.progress.isVisible = true
-    }
-
-    override fun hideLoading() {
-        binding.progress.isVisible = false
     }
 }
 

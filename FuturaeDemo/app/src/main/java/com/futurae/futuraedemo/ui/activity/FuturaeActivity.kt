@@ -8,32 +8,42 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.text.TextUtils
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.futurae.futuraedemo.R
+import com.futurae.futuraedemo.ui.AccountSelectionSheet
+import com.futurae.futuraedemo.ui.activeunlockmethodspicker.ActiveUnlockMethodPickerSheet
+import com.futurae.futuraedemo.ui.activity.arch.BroadcastReceivedMessage
+import com.futurae.futuraedemo.ui.activity.arch.DoOnUnlockMethodPicked
+import com.futurae.futuraedemo.ui.activity.arch.FuturaeViewModel
+import com.futurae.futuraedemo.ui.fragment.FragmentPin
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.futuraedemo.util.showInputDialog
 import com.futurae.futuraedemo.util.toDialogMessage
 import com.futurae.sdk.FuturaeSDK
-import com.futurae.sdk.public_api.account.model.AccountQuery
 import com.futurae.sdk.public_api.account.model.EnrollAccount
 import com.futurae.sdk.public_api.account.model.EnrollmentParams
 import com.futurae.sdk.public_api.account.model.URI
 import com.futurae.sdk.public_api.auth.model.ApproveParameters
 import com.futurae.sdk.public_api.auth.model.RejectParameters
 import com.futurae.sdk.public_api.auth.model.SessionId
-import com.futurae.sdk.public_api.exception.FTAccountNotFoundException
-import com.futurae.sdk.public_api.exception.FTEncryptedStorageCorruptedException
+import com.futurae.sdk.public_api.common.model.PresentationConfigurationForBiometricsPrompt
+import com.futurae.sdk.public_api.common.model.PresentationConfigurationForDeviceCredentialsPrompt
 import com.futurae.sdk.public_api.exception.FTException
-import com.futurae.sdk.public_api.exception.FTInvalidArgumentException
-import com.futurae.sdk.public_api.exception.FTKeystoreOperationException
-import com.futurae.sdk.public_api.session.model.ApproveInfo
+import com.futurae.sdk.public_api.lock.model.UnlockMethodType
+import com.futurae.sdk.public_api.lock.model.WithBiometrics
+import com.futurae.sdk.public_api.lock.model.WithBiometricsOrDeviceCredentials
+import com.futurae.sdk.public_api.lock.model.WithSDKPin
 import com.futurae.sdk.public_api.session.model.ApproveSession
 import com.futurae.sdk.public_api.session.model.ById
 import com.futurae.sdk.public_api.session.model.SessionInfoQuery
@@ -49,26 +59,26 @@ import kotlin.coroutines.suspendCoroutine
 
 abstract class FuturaeActivity : AppCompatActivity() {
 
+    private val viewModel: FuturaeViewModel by viewModels()
+
     protected var pendingUri: String? = null
 
-    private val permissionLauncher = registerForActivityResult(
+    protected val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissionResultMap ->
         if (permissionResultMap.values.contains(false)) {
             AlertDialog.Builder(this)
                 .setTitle("Missing Adaptive Permissions")
                 .setMessage("Make sure to grant all adaptive permissions to make the best out of the functionality. Press Settings to grant missing permissions")
-                .setPositiveButton("Settings") { v, which ->
+                .setPositiveButton("Settings") { _, _ ->
                     startActivity(
                         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                             data = Uri.fromParts("package", packageName, null)
                         }
                     )
                 }
-                .setNegativeButton("Cancel") { v, w ->
-                    {
-                        //nothing
-                    }
+                .setNegativeButton("Cancel") { _, _ ->
+                    //nothing
                 }
                 .show()
         }
@@ -83,74 +93,18 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            val error = intent.getStringExtra(FTNotificationUtils.PARAM_ERROR)
-            if (!TextUtils.isEmpty(error)) {
-                Timber.e("Received Intent '" + intent.action + "' with error: " + error)
-                return
-            }
-            when (intent.action) {
-                FTNotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE -> {
-                    Timber.d(FTNotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE)
-                    val userId: String = intent.getStringExtra(FTNotificationUtils.PARAM_USER_ID)!!
-                    val deviceId: String =
-                        intent.getStringExtra(FTNotificationUtils.PARAM_DEVICE_ID)!!
-                    onUnenroll(userId, deviceId)
-                }
-
-                FTNotificationUtils.INTENT_APPROVE_AUTH_MESSAGE -> {
-                    (intent.getParcelableExtra(FTNotificationUtils.PARAM_APPROVE_SESSION) as? ApproveSession)?.let { approveSession ->
-                        val userId = FTNotificationUtils.getUserId(intent)
-                        val encryptedExtras = FTNotificationUtils.getEncyptedExtras(intent)
-
-                        if (encryptedExtras == null) {
-                            onApproveAuth(approveSession, null)
-                        } else {
-                            if (userId == null) {
-                                Timber.e("User id is required for encrypted extras")
-                                return
-                            }
-                            val decryptedExtras = try {
-                                FuturaeSDK.client.operationsApi.decryptPushNotificationExtraInfo(
-                                    userId = userId,
-                                    encryptedExtrasString = encryptedExtras
-                                )
-                            } catch (e: FTAccountNotFoundException) {
-                                Timber.e("Account not found: ${e.message}")
-                                null
-                            } catch (e: FTEncryptedStorageCorruptedException) {
-                                Timber.e("Encrypted storage corrupted. Please use account recovery operation: ${e.message}")
-                                null
-                            } catch (e: FTKeystoreOperationException) {
-                                Timber.e("Keystore operation failed: ${e.message}")
-                                null
-                            } catch (e: FTInvalidArgumentException) {
-                                Timber.e("Unable to parse decrypted extra info: ${e.message}")
-                                null
-                            }
-                            onApproveAuth(approveSession, decryptedExtras)
-                        }
-                    }
-                }
-
-                FTNotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE -> {
-                    //no-op
-                }
-
-                FTNotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR -> Timber.e(
-                    FTNotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR
-                )
-            }
+            viewModel.handleBroadcastReceivedMessage(message = BroadcastReceivedMessage.from(intent))
         }
     }
 
-    fun onApproveAuth(
+    fun showApproveAuthConfirmationDialog(
         session: ApproveSession,
-        decryptedExtras: List<ApproveInfo>?,
+        additionalMessage: String?,
     ) {
         showDialog(
             "approve",
             "Would you like to approve the request?${session.toDialogMessage()} " +
-                    "\n ${decryptedExtras?.let { "PN decrypted extras: ${it.joinToString()}" }}",
+                    "\n $additionalMessage",
             "Approve",
             { approveAuth(session) },
             "Deny",
@@ -175,11 +129,6 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (FuturaeSDK.isAdaptiveEnabled()) {
-            permissionLauncher.launch(
-                requestAdaptivePermissions()
-            )
-        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissionLauncher.launch(
                 arrayOf(android.Manifest.permission.POST_NOTIFICATIONS)
@@ -188,6 +137,8 @@ abstract class FuturaeActivity : AppCompatActivity() {
         intent?.dataString?.takeIf { it.isNotBlank() }?.let {
             pendingUri = it
         }
+
+        setUpObservers()
     }
 
     fun handleUri(uriCall: String) {
@@ -221,25 +172,12 @@ abstract class FuturaeActivity : AppCompatActivity() {
         pendingUri = null
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         //Handle URI from intent
-        intent?.dataString?.takeIf { it.isNotBlank() }?.let { uriCall ->
+        intent.dataString?.takeIf { it.isNotBlank() }?.let { uriCall ->
             handleUri(uriCall)
         }
-    }
-
-    private fun requestAdaptivePermissions(): Array<String> {
-        val permissions = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions.add(android.Manifest.permission.NEARBY_WIFI_DEVICES)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            permissions.add(android.Manifest.permission.BLUETOOTH_SCAN)
-            permissions.add(android.Manifest.permission.BLUETOOTH_CONNECT)
-        }
-        permissions.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
-        return permissions.toTypedArray()
     }
 
     override fun onResume() {
@@ -251,14 +189,6 @@ abstract class FuturaeActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver)
-    }
-
-    protected fun onUnenroll(userId: String, deviceId: String) {
-        FuturaeSDK.client.accountApi.getAccount(
-            AccountQuery.WhereUserIdAndDevice(userId, deviceId)
-        )?.let {
-            FuturaeSDK.client.accountApi.logoutAccountOffline(userId)
-        }
     }
 
     protected fun rejectAuth(session: ApproveSession) = lifecycleScope.launch {
@@ -307,7 +237,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
         showAlert(title, message)
     }
 
-    protected fun approveAuth(session: ApproveSession) = lifecycleScope.launch {
+    private fun approveAuth(session: ApproveSession) = lifecycleScope.launch {
         val userIdInSession = session.userId
         if (userIdInSession == null) {
             showAlertOnUIThread("API Error", "ApproveSession is incomplete")
@@ -392,7 +322,107 @@ abstract class FuturaeActivity : AppCompatActivity() {
         }
     }
 
+    private fun setUpObservers() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.notifyUser.collect { (title, message) ->
+                        showAlertOnUIThread(title = title, message = message)
+                    }
+                }
 
-    abstract fun showLoading()
-    abstract fun hideLoading()
+                launch {
+                    viewModel.notifyUserAboutError.collect { (title, throwable) ->
+                        showErrorAlert(title = title, throwable = throwable)
+                    }
+                }
+
+                launch {
+                    viewModel.promptUserToPickUnlockMethod.collect {
+                        promptUserToPickUnlockMethod(it)
+                    }
+                }
+
+                launch {
+                    viewModel.promptUserForApproval.collect { (approveSession, approveInfo) ->
+                        showApproveAuthConfirmationDialog(approveSession, approveInfo)
+                    }
+                }
+
+                launch {
+                    viewModel.onUnlockMethodSelected.collect { (unlockMethodType, doOnSdkUnlocked) ->
+                        unlockSdk(unlockMethodType) {
+                            doOnSdkUnlocked()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun unlockSdk(
+        unlockMethodType: UnlockMethodType,
+        onSDKUnlocked: () -> Unit
+    ) {
+        when (unlockMethodType) {
+            UnlockMethodType.BIOMETRICS -> {
+                val userPresenceVerificationMode = WithBiometrics(
+                    PresentationConfigurationForBiometricsPrompt(
+                        this,
+                        "Unlock SDK",
+                        "Authenticate with biometrics",
+                        "Authentication is required to unlock SDK operations",
+                        "cancel",
+                    )
+                )
+                viewModel.unlockSdk(userPresenceVerificationMode, onSDKUnlocked)
+            }
+            UnlockMethodType.BIOMETRICS_OR_DEVICE_CREDENTIALS -> {
+                val userPresenceVerificationMode = WithBiometricsOrDeviceCredentials(
+                    PresentationConfigurationForDeviceCredentialsPrompt(
+                        this,
+                        "Unlock SDK",
+                        "Authenticate with biometrics",
+                        "Authentication is required to unlock SDK operations",
+                    )
+                )
+                viewModel.unlockSdk(userPresenceVerificationMode, onSDKUnlocked)
+            }
+            UnlockMethodType.SDK_PIN -> {
+                supportFragmentManager.getPinWithCallback {
+                    val userPresenceVerificationMode = WithSDKPin(it)
+                    viewModel.unlockSdk(userPresenceVerificationMode, onSDKUnlocked)
+                }
+            }
+        }
+    }
+
+    private fun FragmentManager.getPinWithCallback(callback: (CharArray) -> Unit) {
+        val pinFragment = FragmentPin()
+
+        beginTransaction()
+            .add(
+                R.id.pinFragmentContainer,
+                pinFragment.apply {
+                    listener = object : FragmentPin.Listener {
+                        override fun onPinComplete(pin: CharArray) {
+                            parentFragmentManager.beginTransaction().remove(pinFragment).commit()
+                            callback(pin)
+                        }
+                    }
+                }
+            )
+            .commit()
+    }
+
+    private fun promptUserToPickUnlockMethod(onMethodPicked: DoOnUnlockMethodPicked) {
+        val modalBottomSheet = ActiveUnlockMethodPickerSheet().apply {
+            setOnActiveUnlockMethodPickedListener(object : ActiveUnlockMethodPickerSheet.Listener {
+                override fun onUnlockMethodSelected(unlockMethod: UnlockMethodType) {
+                    onMethodPicked(unlockMethod)
+                }
+            })
+        }
+        modalBottomSheet.show(supportFragmentManager, AccountSelectionSheet.TAG)
+    }
 }

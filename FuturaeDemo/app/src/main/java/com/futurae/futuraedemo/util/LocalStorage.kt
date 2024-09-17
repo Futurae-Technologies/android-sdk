@@ -12,6 +12,7 @@ private const val SP_KEY_DURATION = "SP_D"
 private const val SP_KEY_INVALIDATE_BY_BIOMETRICS = "SP_IBB"
 private const val SP_KEY_REQUIRE_DEVICE_UNLOCKED = "SP_RDU"
 private const val SP_KEY_SKIP_HARDWARE_SECURITY = "SP_SHS"
+private const val SP_KEY_ALLOW_SDK_PIN_CHANGE_WITH_BIO = "SP_ASPCWB"
 
 class LocalStorage(private val context: Context) {
 
@@ -31,6 +32,7 @@ class LocalStorage(private val context: Context) {
             putBoolean(SP_KEY_INVALIDATE_BY_BIOMETRICS, config.invalidatedByBiometricChange)
             putBoolean(SP_KEY_REQUIRE_DEVICE_UNLOCKED, config.unlockedDeviceRequired)
             putBoolean(SP_KEY_SKIP_HARDWARE_SECURITY, config.skipHardwareSecurity)
+            putBoolean(SP_KEY_ALLOW_SDK_PIN_CHANGE_WITH_BIO, config.allowChangePinCodeWithBiometricUnlock)
         }
     }
 
@@ -45,6 +47,7 @@ class LocalStorage(private val context: Context) {
             .setInvalidatedByBiometricChange(sharedPrefs.getBoolean(SP_KEY_INVALIDATE_BY_BIOMETRICS, false))
             .setUnlockedDeviceRequired(sharedPrefs.getBoolean(SP_KEY_REQUIRE_DEVICE_UNLOCKED, false))
             .setSkipHardwareSecurity(sharedPrefs.getBoolean(SP_KEY_SKIP_HARDWARE_SECURITY, false))
+            .setAllowChangePinCodeWithBiometricUnlock(sharedPrefs.getBoolean(SP_KEY_ALLOW_SDK_PIN_CHANGE_WITH_BIO, false))
             .build()
     }
 

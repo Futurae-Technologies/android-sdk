@@ -82,6 +82,13 @@
                 android:text="Clear V2 storage key" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonTestWithDelay"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Test with delay" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonCheckSigning"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -101,6 +108,20 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="Upload Pub K" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonAdaptiveOverview"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Adaptive Overview" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/buttonToggleAllowChangePinWithBio"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Allow changeSDKPIn with biometric unlock" />
 
         </LinearLayout>
 

@@ -4,9 +4,12 @@ import android.app.backup.BackupAgent
 import android.app.backup.BackupDataInput
 import android.app.backup.BackupDataOutput
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import timber.log.Timber
 import java.io.*
 import kotlin.random.Random
+
+private val TAG = CustomBackupAgent::class.simpleName
 
 class CustomBackupAgent : BackupAgent() {
 
@@ -24,7 +27,7 @@ class CustomBackupAgent : BackupAgent() {
             sp.edit().putInt(PREF_RANDOM_STRING, randomInt).apply()
 
             val preferenceValue = randomInt.toString()
-            Timber.d("Starting backup of the prefs configuration in $PREFS_BACKUP_KEY, store: $randomInt as $preferenceValue")
+            Timber.d("Starting backup of the prefs configuration in " + PREFS_BACKUP_KEY + ", store: " + randomInt + " as " + preferenceValue)
 
             val bufStream = ByteArrayOutputStream()
             val outWriter = DataOutputStream(bufStream)
@@ -34,7 +37,7 @@ class CustomBackupAgent : BackupAgent() {
             data.writeEntityHeader(PREFS_BACKUP_KEY, len)
             data.writeEntityData(buffer, len)
         } catch (e: IOException) {
-            Timber.e(e)
+            Log.e(TAG, e.message ?: "")
             throw e
         }
     }
@@ -53,18 +56,20 @@ class CustomBackupAgent : BackupAgent() {
                     if (storedValue.isBlank()) {
                         return
                     }
-                    Timber.d(
+                    Log.d(
+                        TAG,
                         "onRestore: Prefs restore from the backup completed. Value: ${storedValue}, calling SDK backup agent"
                     )
                     val sp = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                     sp.edit().putInt(PREF_RANDOM_STRING, storedValue.toInt()).apply()
                 } catch (e: IOException) {
-                    Timber.e(e)
+                    Log.e(TAG, e.message ?: "")
                     throw e
                 } catch (e: Exception) {
-                    Timber.e(e)
+                    Log.d(TAG, e.message ?: "")
                 }
             } else {
+                Timber.e("Restoring of Futurae account data")
                 com.futurae.sdk.BackupAgent.onRestoreAccountsData(this, data)
             }
         }

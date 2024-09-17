@@ -1,4 +1,4 @@
-package com.futurae.futuraedemo
+package com.futurae.futuraedemo.ui
 
 import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.public_api.common.FuturaeSDKStatus

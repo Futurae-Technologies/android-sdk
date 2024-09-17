@@ -26,6 +26,9 @@ class FragmentSDKUnlockNone : FragmentSDKOperations() {
         binding.buttonEnroll.setOnClickListener {
             scanQRCode()
         }
+        binding.buttonEnrollActivation.setOnClickListener {
+            onActivationCodeEnroll()
+        }
         binding.buttonEnrollManual.setOnClickListener {
             onManualEntryEnroll()
         }
@@ -49,13 +52,8 @@ class FragmentSDKUnlockNone : FragmentSDKOperations() {
         }
     }
 
-    override fun toggleAdaptiveButton(): MaterialButton = binding.buttonAdaptive
-
-    override fun viewAdaptiveCollectionsButton(): MaterialButton =
-        binding.buttonViewAdaptiveCollections
-
-    override fun setAdaptiveThreshold(): MaterialButton = binding.buttonConfigureAdaptiveTime
     override fun serviceLogoButton(): MaterialButton = binding.buttonServiceLogo
     override fun timeLeftView(): TextView = binding.textTimerValue
     override fun sdkStatus(): TextView = binding.textStatusValue
+    override fun accountInfoButton(): View = binding.buttonAccountInfo
 }
