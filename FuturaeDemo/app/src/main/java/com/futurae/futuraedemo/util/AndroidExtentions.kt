@@ -40,13 +40,13 @@ fun Context.showAlert(
 ) {
     android.os.Handler(Looper.getMainLooper()).post {
         AlertDialog.Builder(this)
-                .setTitle(title)
-                .setMessage(message)
-                .setPositiveButton("ok") { dialog, which ->
-                    dialog.dismiss()
-                }
-                .create()
-                .show()
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("ok") { dialog, which ->
+                dialog.dismiss()
+            }
+            .create()
+            .show()
     }
 }
 
@@ -57,9 +57,6 @@ fun Fragment.showAlert(
     Timber.i(message)
     val context = this.context ?: return
     context.showAlert(title, message)
-    if(this.isResumed) {
-        requireContext().showAlert(title, message)
-    }
 }
 
 fun Fragment.showErrorAlert(
@@ -69,9 +66,6 @@ fun Fragment.showErrorAlert(
     Timber.e(throwable)
     val context = this.context ?: return
     context.showAlert(title, "Error:\n${throwable.localizedMessage}")
-    if(this.isResumed) {
-        requireContext().showAlert(title, "Error:\n${throwable.localizedMessage}")
-    }
 }
 
 fun Activity.showErrorAlert(
