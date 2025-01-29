@@ -6,6 +6,7 @@ import android.os.Looper
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import com.futurae.sdk.approve.ApproveSession
+import com.futurae.sdk.exception.FTApiTimeoutException
 import timber.log.Timber
 
 fun Context.showDialog(
@@ -63,6 +64,11 @@ fun Fragment.showErrorAlert(
     title: String,
     throwable: Throwable
 ) {
+    if(throwable is FTApiTimeoutException) {
+        Timber.e(throwable.diagnostics)
+    } else if (throwable.cause is FTApiTimeoutException) {
+        Timber.e((throwable.cause as FTApiTimeoutException).diagnostics)
+    }
     Timber.e(throwable)
     val context = this.context ?: return
     context.showAlert(title, "Error:\n${throwable.localizedMessage}")
