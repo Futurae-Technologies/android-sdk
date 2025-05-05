@@ -1,6 +1,4 @@
 <resources>
-  <string name="app_name">FuturaeDemo</string>
-
   <!--QR CODE-->
   <string name="camera_perm_explain">In order to scan a QR code, Futurae requires access to the camera.</string>
 

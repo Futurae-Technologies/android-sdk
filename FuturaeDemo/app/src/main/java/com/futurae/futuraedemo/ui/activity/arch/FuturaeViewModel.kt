@@ -37,15 +37,32 @@ class FuturaeViewModel : ViewModel() {
     private val _notifyUser = MutableSharedFlow<Pair<String, String>>()
     val notifyUser = _notifyUser.asSharedFlow()
 
-    private val _onUnlockMethodSelected = MutableSharedFlow<Pair<UnlockMethodType, DoOnSdkUnlockUnlocked>>()
+    private val _onUnlockMethodSelected =
+        MutableSharedFlow<Pair<UnlockMethodType, DoOnSdkUnlockUnlocked>>()
     val onUnlockMethodSelected = _onUnlockMethodSelected.asSharedFlow()
 
     fun handleBroadcastReceivedMessage(message: BroadcastReceivedMessage) {
         when (message) {
             is BroadcastReceivedMessage.AccountUnenroll -> onAccountUnenroll(message)
             is BroadcastReceivedMessage.ApproveAuth -> handleApproveAuth(message)
-            is BroadcastReceivedMessage.Error,
-            BroadcastReceivedMessage.Unknown ->  {
+            is BroadcastReceivedMessage.InfoNotification -> {
+                notifyUSer(
+                    title = "FT Notification",
+                    message = message.ftNotificationData.payload.toList()
+                        .joinToString(
+                            separator = ",\n",
+                            transform = { pair -> "key: ${pair.first}, value:${pair.second}" }
+                        ) + "\n\nUserId = ${message.ftNotificationData.userId}"
+                )
+            }
+            is BroadcastReceivedMessage.Error -> {
+                notifyUSer(
+                    title = "SDK Error",
+                    message = message.error
+                )
+            }
+
+            BroadcastReceivedMessage.Unknown -> {
                 // do nothing
             }
         }
@@ -72,7 +89,12 @@ class FuturaeViewModel : ViewModel() {
 
     private fun onAccountUnenroll(message: BroadcastReceivedMessage.AccountUnenroll) {
         FuturaeSDK.client.accountApi
-            .getAccount(accountQuery = AccountQuery.WhereUserIdAndDevice(userId = message.userId, deviceId = message.deviceId))
+            .getAccount(
+                accountQuery = AccountQuery.WhereUserIdAndDevice(
+                    userId = message.userId,
+                    deviceId = message.deviceId
+                )
+            )
             ?.let { FuturaeSDK.client.accountApi.logoutAccountOffline(userId = message.userId) }
     }
 
@@ -80,7 +102,10 @@ class FuturaeViewModel : ViewModel() {
         when {
             message.encryptedExtras != null -> {
                 unlockSdk {
-                    decryptExtras(userId = message.userId, encryptedExtras = message.encryptedExtras) {
+                    decryptExtras(
+                        userId = message.userId,
+                        encryptedExtras = message.encryptedExtras
+                    ) {
                         notifyUserForApproval(
                             approveSession = message.approveSession,
                             additionalMessage = it?.let { "PN decrypted extras: ${it.joinToString()}" }
@@ -144,7 +169,10 @@ class FuturaeViewModel : ViewModel() {
         onSuccessfulDecryption(decryptedExtras)
     }
 
-    private fun notifyUserForApproval(approveSession: ApproveSession, additionalMessage: String? = null) {
+    private fun notifyUserForApproval(
+        approveSession: ApproveSession,
+        additionalMessage: String? = null
+    ) {
         viewModelScope.launch {
             _promptUserForApproval.emit(approveSession to additionalMessage)
         }
@@ -160,14 +188,21 @@ class FuturaeViewModel : ViewModel() {
 
         when {
             activeUnlockMethods.isEmpty() -> onSDKUnlocked()
-            activeUnlockMethods.size == 1 -> dispatchUnlockMethodSelection(activeUnlockMethods.first(), onSDKUnlocked)
+            activeUnlockMethods.size == 1 -> dispatchUnlockMethodSelection(
+                activeUnlockMethods.first(),
+                onSDKUnlocked
+            )
+
             else -> promptUserToPickUnlockMethod {
                 dispatchUnlockMethodSelection(it, onSDKUnlocked)
             }
         }
     }
 
-    private fun dispatchUnlockMethodSelection(unlockMethodType: UnlockMethodType, doOnSdkUnlockUnlocked: DoOnSdkUnlockUnlocked) {
+    private fun dispatchUnlockMethodSelection(
+        unlockMethodType: UnlockMethodType,
+        doOnSdkUnlockUnlocked: DoOnSdkUnlockUnlocked
+    ) {
         viewModelScope.launch {
             _onUnlockMethodSelected.emit(unlockMethodType to doOnSdkUnlockUnlocked)
         }
@@ -190,13 +225,21 @@ class FuturaeViewModel : ViewModel() {
 
         try {
             val sessionInfo = FuturaeSDK.client.sessionApi
-                .getSessionInfo(query = SessionInfoQuery(sessionIdentifier = ById(sessionId), userId = userId))
+                .getSessionInfo(
+                    query = SessionInfoQuery(
+                        sessionIdentifier = ById(sessionId),
+                        userId = userId
+                    )
+                )
                 .await()
 
             Result.success(sessionInfo.approveInfo)
         } catch (t: Throwable) {
             Timber.e(t)
-            notifyUSer(title =  "Session Api Error", message = "Error fetching session: \n" + t.message)
+            notifyUSer(
+                title = "Session Api Error",
+                message = "Error fetching session: \n" + t.message
+            )
             Result.failure<List<ApproveInfo>>(Throwable())
         }
     }

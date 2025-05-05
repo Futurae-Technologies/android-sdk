@@ -26,6 +26,7 @@ import com.futurae.sdk.public_api.common.LockConfigurationType.*
 import com.futurae.sdk.public_api.common.SDKConfiguration
 import com.futurae.sdk.public_api.common.model.PresentationConfigurationForBiometricsPrompt
 import com.futurae.sdk.public_api.common.model.PresentationConfigurationForDeviceCredentialsPrompt
+import com.futurae.sdk.public_api.exception.FTApiPinIncorrectException
 import com.futurae.sdk.public_api.exception.FTCorruptedStateException
 import com.futurae.sdk.public_api.exception.FTInvalidStateException
 import com.futurae.sdk.public_api.exception.FTKeyNotFoundException
@@ -186,7 +187,21 @@ class MainActivity : FuturaeActivity(), FragmentConfiguration.Listener, Fragment
                 }
 
                 override fun onError(throwable: Throwable) {
-                    showErrorAlert("SDK Recovery failed", throwable)
+                    if (throwable is FTApiPinIncorrectException) {
+                        showDialog(
+                            title = "SDK Recovery failed",
+                            message = throwable.localizedMessage ?: "",
+                            positiveButton = "Re-attempt recovery",
+                            positiveButtonCallback = {
+                                // To get here should always be on SDK_PIN_WITH_BIOMETRICS_OPTIONAL
+                                getPinWithCallback {
+                                    attemptSDKRecovery(sdkConfiguration, it)
+                                }
+                            }
+                        )
+                    } else {
+                        showErrorAlert("SDK Recovery failed", throwable)
+                    }
                 }
             }
         )

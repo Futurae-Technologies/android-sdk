@@ -2,6 +2,7 @@ package com.futurae.futuraedemo.ui.activity.arch
 
 import android.content.Intent
 import com.futurae.futuraedemo.util.getParcelable
+import com.futurae.sdk.model.internal.FTNotificationData
 import com.futurae.sdk.public_api.session.model.ApproveSession
 import com.futurae.sdk.utils.FTNotificationUtils
 import timber.log.Timber
@@ -42,6 +43,15 @@ sealed class BroadcastReceivedMessage(open val action: String?) {
                         ?: Error(action = intent.action, error = "Unable to parse ApproveSession")
                 }
 
+                FTNotificationUtils.INTENT_CUSTOM_NOTIFICATION -> {
+                    intent.getParcelable(
+                        FTNotificationUtils.PARAM_CUSTOM_NOTIFICATION,
+                        FTNotificationData::class.java
+                    )?.let {
+                        InfoNotification(ftNotificationData = it)
+                    } ?: Error(action = intent.action, error = "Unable to parse FTNotification")
+                }
+
                 FTNotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR -> {
                     Timber.e(FTNotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR)
                     Error(action = intent.action, error = "Generic Error")
@@ -69,6 +79,10 @@ sealed class BroadcastReceivedMessage(open val action: String?) {
         val userId: String?,
         val approveSession: ApproveSession
     ) : BroadcastReceivedMessage(action = FTNotificationUtils.INTENT_APPROVE_AUTH_MESSAGE)
+
+    data class InfoNotification(
+        val ftNotificationData: FTNotificationData
+    ) : BroadcastReceivedMessage(action = FTNotificationUtils.INTENT_CUSTOM_NOTIFICATION)
 
     object Unknown : BroadcastReceivedMessage(null)
 }

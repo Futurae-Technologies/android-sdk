@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import com.futurae.futuraedemo.R
 import com.futurae.futuraedemo.databinding.FragmentSdkConfigurationBinding
 import com.futurae.futuraedemo.util.showErrorAlert
+import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.debug.FuturaeDebugUtil
 import com.futurae.sdk.public_api.common.LockConfigurationType
 import com.futurae.sdk.public_api.common.SDKConfiguration
@@ -76,6 +77,9 @@ class FragmentConfiguration : Fragment() {
         }
         binding.corruptDbButton.setOnClickListener {
             FuturaeDebugUtil.corruptDBTokens(requireContext())
+        }
+        binding.resetButton.setOnClickListener {
+            FuturaeSDK.reset(requireContext())
         }
     }
 

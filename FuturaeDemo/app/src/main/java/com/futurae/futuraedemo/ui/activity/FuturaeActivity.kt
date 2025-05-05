@@ -49,6 +49,7 @@ import com.futurae.sdk.public_api.session.model.ById
 import com.futurae.sdk.public_api.session.model.SessionInfoQuery
 import com.futurae.sdk.utils.FTNotificationUtils
 import com.futurae.sdk.utils.FTUriUtils
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -89,6 +90,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
         addAction(FTNotificationUtils.INTENT_APPROVE_AUTH_MESSAGE)
         addAction(FTNotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR)
         addAction(FTNotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE)
+        addAction(FTNotificationUtils.INTENT_CUSTOM_NOTIFICATION)
     }
 
     private val broadcastReceiver = object : BroadcastReceiver() {
@@ -143,12 +145,16 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     fun handleUri(uriCall: String) {
         onReceivedUri {
+            val exceptionHandler = CoroutineExceptionHandler { _, t ->
+                showErrorAlert("URI Error", t)
+            }
+
             try {
                 if (FTUriUtils.isEnrollUri(uriCall)) {
                     // Optional: you may use the enrollAccount API instead of handleUri API,
                     // to support flow-binding-token
                     showInputDialog("Flow Binding Token") {
-                        lifecycleScope.launch {
+                        lifecycleScope.launch(exceptionHandler) {
                             FuturaeSDK.client.accountApi.enrollAccount(
                                 EnrollmentParams(
                                     URI(uriCall),
@@ -160,7 +166,7 @@ abstract class FuturaeActivity : AppCompatActivity() {
                         }
                     }
                 } else {
-                    lifecycleScope.launch {
+                    lifecycleScope.launch(exceptionHandler) {
                         FuturaeSDK.client.operationsApi.handleUri(uriCall).await()
                         showToast("URI handled")
                     }
