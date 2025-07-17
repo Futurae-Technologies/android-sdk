@@ -23,6 +23,7 @@ import com.futurae.futuraedemo.ui.activity.FuturaeActivity
 import com.futurae.futuraedemo.ui.qr_push_action.QRCodeFlowOpenCoordinator
 import com.futurae.futuraedemo.util.LocalStorage
 import com.futurae.futuraedemo.util.getParcelable
+import com.futurae.futuraedemo.util.getSessionInfo
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
@@ -221,6 +222,7 @@ abstract class FragmentSDKOperations : BaseFragment() {
                     account.userId,
                     SDKAuthMode.Unlock
                 ).await()
+
                 showAlert(
                     "TOTP", "Code: ${totp.passcode}\nRemaining seconds: ${totp.remainingSeconds}"
                 )
@@ -456,16 +458,19 @@ abstract class FragmentSDKOperations : BaseFragment() {
 
             lifecycleScope.launch {
                 try {
-                    val sessionInfo = FuturaeSDK.client.sessionApi.getSessionInfo(
-                        SessionInfoQuery(
+                    val sessionInfo = getSessionInfo(
+                        query = SessionInfoQuery(
                             ByToken(sessionToken),
                             userId,
-                        )
-                    ).await()
+                        ),
+                        isPhysicalDeviceSessionInfoEnabled = localStorage.isUnprotectedSessionInfoEnabled
+                    )
 
-                    ApproveSession(sessionInfo).takeIf { it.userId?.isNotBlank() == true }
+                    ApproveSession(sessionInfo)
+                        .takeIf { it.userId?.isNotBlank() == true }
                         ?.let { session ->
-                            showDialog("approve",
+                            showDialog(
+                                "approve",
                                 "Would you like to approve the request?${session.toDialogMessage()}",
                                 "Approve",
                                 {
@@ -507,10 +512,11 @@ abstract class FragmentSDKOperations : BaseFragment() {
                                         }
                                     }
                                 })
-                        } ?: showErrorAlert(
-                        "SDK Error",
-                        Throwable("Session is missing user id")
-                    )
+                        }
+                        ?: showErrorAlert(
+                            "SDK Error",
+                            Throwable("Session is missing user id")
+                        )
                 } catch (t: Throwable) {
                     showErrorAlert("Session API error", t)
                 }
@@ -536,12 +542,13 @@ abstract class FragmentSDKOperations : BaseFragment() {
         val sessionToken = FTQRCodeUtils.getSessionTokenFromQrcode(qrCode)
         lifecycleScope.launch {
             val sessionInfo = try {
-                FuturaeSDK.client.sessionApi.getSessionInfo(
-                    SessionInfoQuery(
+                getSessionInfo(
+                    query = SessionInfoQuery(
                         ByToken(sessionToken),
                         userId,
-                    )
-                ).await()
+                    ),
+                    isPhysicalDeviceSessionInfoEnabled = localStorage.isUnprotectedSessionInfoEnabled
+                )
             } catch (t: Throwable) {
                 showErrorAlert("Session API error", t)
                 return@launch

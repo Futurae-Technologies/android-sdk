@@ -83,9 +83,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data
-                    android:scheme="https"
-                    android:host="www.futurae.com" />
+                <data android:scheme="https"/>
+                <data android:host="www.futurae.com"/>
+                <data android:pathPrefix="/futurae_enroll"/>
+                <data android:pathPrefix="/futurae_auth"/>
             </intent-filter>
         </activity>
 

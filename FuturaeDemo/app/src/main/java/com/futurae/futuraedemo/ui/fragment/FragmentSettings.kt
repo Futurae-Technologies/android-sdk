@@ -20,6 +20,7 @@ import com.futurae.futuraedemo.util.getParcelable
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showErrorAlert
 import com.futurae.sdk.FuturaeSDK
+import com.futurae.sdk.adaptive.debug.AdaptiveDebugUtil
 import com.futurae.sdk.debug.FuturaeDebugUtil
 import com.futurae.sdk.public_api.auth.model.ApproveParameters
 import com.futurae.sdk.public_api.auth.model.SessionId
@@ -131,6 +132,12 @@ class FragmentSettings : BaseFragment() {
         binding.buttonClearV2LocalStorageKey.setOnClickListener {
             FuturaeDebugUtil.corruptEncryptedStorageKey(requireContext())
         }
+        binding.buttonCorruptAdaptiveLocalStorage.setOnClickListener {
+            AdaptiveDebugUtil.corruptDB()
+        }
+        binding.buttonClearAdaptiveLocalStorageKey.setOnClickListener {
+            AdaptiveDebugUtil.corruptEncryptedStorageKey()
+        }
         binding.buttonTestWithDelay.setOnClickListener {
             lifecycleScope.launch {
                 delay(10000)
@@ -193,6 +200,7 @@ class FragmentSettings : BaseFragment() {
         binding.buttonAdaptiveOverview.setOnClickListener {
             startActivity(Intent(requireContext(), AdaptiveOverviewActivity::class.java))
         }
+
         binding.buttonToggleAllowChangePinWithBio.isVisible = localStorage.getPersistedSDKConfig().lockConfigurationType == LockConfigurationType.SDK_PIN_WITH_BIOMETRICS_OPTIONAL
         binding.buttonToggleAllowChangePinWithBio.isChecked = localStorage.getPersistedSDKConfig().allowChangePinCodeWithBiometricUnlock
         binding.buttonToggleAllowChangePinWithBio.setOnCheckedChangeListener { buttonView, isChecked ->
@@ -205,6 +213,11 @@ class FragmentSettings : BaseFragment() {
                 "changeSDKPin with Bio disabled for next SDK launch"
             }
             showAlert("SDK Config update", message)
+        }
+
+        binding.buttonToggleAllowUnprotectedSessionInfo.isChecked = localStorage.isUnprotectedSessionInfoEnabled
+        binding.buttonToggleAllowUnprotectedSessionInfo.setOnCheckedChangeListener { _, isChecked ->
+            localStorage.setUnprotectedSessionInfoEnabled(isChecked)
         }
     }
 

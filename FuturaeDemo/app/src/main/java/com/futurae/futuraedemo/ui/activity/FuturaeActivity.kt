@@ -25,6 +25,8 @@ import com.futurae.futuraedemo.ui.activity.arch.BroadcastReceivedMessage
 import com.futurae.futuraedemo.ui.activity.arch.DoOnUnlockMethodPicked
 import com.futurae.futuraedemo.ui.activity.arch.FuturaeViewModel
 import com.futurae.futuraedemo.ui.fragment.FragmentPin
+import com.futurae.futuraedemo.util.LocalStorage
+import com.futurae.futuraedemo.util.getSessionInfo
 import com.futurae.futuraedemo.util.showAlert
 import com.futurae.futuraedemo.util.showDialog
 import com.futurae.futuraedemo.util.showErrorAlert
@@ -60,7 +62,13 @@ import kotlin.coroutines.suspendCoroutine
 
 abstract class FuturaeActivity : AppCompatActivity() {
 
-    private val viewModel: FuturaeViewModel by viewModels()
+    private val localStorage: LocalStorage by lazy {
+        LocalStorage(this)
+    }
+
+    private val viewModel: FuturaeViewModel by viewModels {
+        FuturaeViewModel.provideFactory(localStorage.isUnprotectedSessionInfoEnabled)
+    }
 
     protected var pendingUri: String? = null
 
@@ -101,16 +109,25 @@ abstract class FuturaeActivity : AppCompatActivity() {
 
     fun showApproveAuthConfirmationDialog(
         session: ApproveSession,
-        additionalMessage: String?,
+        additionalMessage: String?
     ) {
         showDialog(
             "approve",
             "Would you like to approve the request?${session.toDialogMessage()} " +
                     "\n $additionalMessage",
             "Approve",
-            { approveAuth(session) },
+            {
+                viewModel.unlockSdk {
+                    approveAuth(session)
+                }
+            },
             "Deny",
-            { rejectAuth(session) })
+            {
+                viewModel.unlockSdk {
+                    rejectAuth(session)
+                }
+            }
+        )
     }
 
     /**
@@ -205,12 +222,13 @@ abstract class FuturaeActivity : AppCompatActivity() {
         }
 
         val sessionInfoResult = try {
-            FuturaeSDK.client.sessionApi.getSessionInfo(
-                SessionInfoQuery(
+            getSessionInfo(
+                query = SessionInfoQuery(
                     ById(session.sessionId),
                     userIdInSession,
-                )
-            ).await()
+                ),
+                isPhysicalDeviceSessionInfoEnabled = localStorage.isUnprotectedSessionInfoEnabled
+            )
         } catch (t: Throwable) {
             Timber.e(t)
             showAlertOnUIThread(
@@ -251,12 +269,13 @@ abstract class FuturaeActivity : AppCompatActivity() {
         }
 
         val sessionInfoResult = try {
-            FuturaeSDK.client.sessionApi.getSessionInfo(
-                SessionInfoQuery(
+            getSessionInfo(
+                query = SessionInfoQuery(
                     ById(session.sessionId),
                     userIdInSession,
-                )
-            ).await()
+                ),
+                isPhysicalDeviceSessionInfoEnabled = localStorage.isUnprotectedSessionInfoEnabled
+            )
         } catch (t: Throwable) {
             Timber.e(t)
             showAlertOnUIThread("API Error", "Error: \n" + t.message)

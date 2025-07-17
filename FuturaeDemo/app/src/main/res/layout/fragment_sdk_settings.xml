@@ -82,6 +82,20 @@
                 android:text="Clear V2 storage key" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonCorruptAdaptiveLocalStorage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Corrupt Adaptive Storage" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonClearAdaptiveLocalStorageKey"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Clear Adaptive Storage Key" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonTestWithDelay"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -122,6 +136,13 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="Allow changeSDKPIn with biometric unlock" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/button_toggle_allow_unprotected_session_info"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Allow fetching session info without SDK unlocking" />
 
         </LinearLayout>
 

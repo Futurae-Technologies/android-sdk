@@ -1,7 +1,9 @@
 package com.futurae.futuraedemo.ui.activity.arch
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.futurae.futuraedemo.util.getSessionInfo
 import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.public_api.account.model.AccountQuery
 import com.futurae.sdk.public_api.exception.FTAccountNotFoundException
@@ -23,7 +25,21 @@ import timber.log.Timber
 typealias DoOnUnlockMethodPicked = (UnlockMethodType) -> Unit
 typealias DoOnSdkUnlockUnlocked = () -> Unit
 
-class FuturaeViewModel : ViewModel() {
+class FuturaeViewModel(
+    private val isPhysicalDeviceSessionInfoEnabled: Boolean
+) : ViewModel() {
+
+    companion object {
+        fun provideFactory(
+            isPhysicalDeviceSessionInfoEnabled: Boolean
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = FuturaeViewModel(
+                isPhysicalDeviceSessionInfoEnabled = isPhysicalDeviceSessionInfoEnabled
+            ) as T
+        }
+    }
 
     private val _promptUserToPickUnlockMethod = MutableSharedFlow<DoOnUnlockMethodPicked>()
     val promptUserToPickUnlockMethod = _promptUserToPickUnlockMethod.asSharedFlow()
@@ -115,7 +131,7 @@ class FuturaeViewModel : ViewModel() {
             }
 
             message.approveSession.hasExtraInfo() -> {
-                unlockSdk {
+                if (isPhysicalDeviceSessionInfoEnabled) {
                     viewModelScope.launch {
                         fetchSessionInfo(approveSession = message.approveSession)
                             .await()
@@ -125,6 +141,19 @@ class FuturaeViewModel : ViewModel() {
                                     additionalMessage = it?.let { "Session extras: ${it.joinToString()}" }
                                 )
                             }
+                    }
+                } else {
+                    unlockSdk {
+                        viewModelScope.launch {
+                            fetchSessionInfo(approveSession = message.approveSession)
+                                .await()
+                                .onSuccess {
+                                    notifyUserForApproval(
+                                        approveSession = message.approveSession,
+                                        additionalMessage = it?.let { "Session extras: ${it.joinToString()}" }
+                                    )
+                                }
+                        }
                     }
                 }
             }
@@ -178,7 +207,7 @@ class FuturaeViewModel : ViewModel() {
         }
     }
 
-    private fun unlockSdk(onSDKUnlocked: () -> Unit) {
+    fun unlockSdk(onSDKUnlocked: () -> Unit) {
         if (!FuturaeSDK.client.lockApi.isLocked()) {
             onSDKUnlocked()
             return
@@ -224,14 +253,13 @@ class FuturaeViewModel : ViewModel() {
         }
 
         try {
-            val sessionInfo = FuturaeSDK.client.sessionApi
-                .getSessionInfo(
-                    query = SessionInfoQuery(
-                        sessionIdentifier = ById(sessionId),
-                        userId = userId
-                    )
-                )
-                .await()
+            val sessionInfo = getSessionInfo(
+                query = SessionInfoQuery(
+                    sessionIdentifier = ById(sessionId),
+                    userId = userId
+                ),
+                isPhysicalDeviceSessionInfoEnabled = isPhysicalDeviceSessionInfoEnabled
+            )
 
             Result.success(sessionInfo.approveInfo)
         } catch (t: Throwable) {

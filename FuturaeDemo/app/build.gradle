@@ -17,8 +17,8 @@ android {
         minSdkVersion 23
         targetSdkVersion 35
 
-        versionCode 332
-        versionName "3.3.2"
+        versionCode 350
+        versionName "3.5.0"
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
 
@@ -60,6 +60,7 @@ android {
 repositories {
     google()
     mavenCentral()
+    mavenLocal()
     maven {
         url "https://maven.pkg.github.com/Futurae-Technologies/android-sdk"
         credentials {
@@ -101,6 +102,6 @@ dependencies {
     implementation "com.jakewharton.timber:timber:5.0.1"
     implementation 'com.github.bumptech.glide:glide:4.15.0'
 
-    implementation 'com.futurae.sdk:adaptive:1.0.3-alpha'
-    implementation 'com.futurae.sdk:futuraekit:3.3.2'
+    implementation 'com.futurae.sdk:adaptive:1.1.0-alpha'
+    implementation 'com.futurae.sdk:futuraekit:3.5.0'
 }
