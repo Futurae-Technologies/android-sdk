@@ -1,0 +1,16 @@
+[versions]
+agp = "8.1.2"
+kotlin = "1.9.25"
+crashlytics = "3.0.3"
+google-services = "4.4.2"
+
+[libraries]
+#TODO
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlytics"}
+google-services = { id = "com.google.gms.google-services", version.ref = "google-services" }

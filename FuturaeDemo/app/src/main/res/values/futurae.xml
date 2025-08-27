@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-  <string name="ftr_sdk_id">@string/sdk_id</string>
-  <string name="ftr_sdk_key">@string/sdk_key</string>
-  <string name="ftr_base_url">@string/base_url</string>
-</resources>
