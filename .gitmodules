@@ -1,0 +1,3 @@
+[submodule "android-sdk-sample"]
+	path = android-sdk-sample
+	url = git@github.com:Futurae-Technologies/android-sdk-sample.git
