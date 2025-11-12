@@ -17,11 +17,9 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.futurae.futuraedemo.R
 import com.futurae.futuraedemo.ui.AccountSelectionSheet
 import com.futurae.futuraedemo.ui.activeunlockmethodspicker.ActiveUnlockMethodPickerSheet
-import com.futurae.futuraedemo.ui.activity.arch.BroadcastReceivedMessage
 import com.futurae.futuraedemo.ui.activity.arch.DoOnUnlockMethodPicked
 import com.futurae.futuraedemo.ui.activity.arch.FuturaeViewModel
 import com.futurae.futuraedemo.ui.fragment.FragmentPin
@@ -47,7 +45,6 @@ import com.futurae.sdk.public_api.lock.model.WithSDKPin
 import com.futurae.sdk.public_api.session.model.ApproveSession
 import com.futurae.sdk.public_api.session.model.ById
 import com.futurae.sdk.public_api.session.model.SessionInfoQuery
-import com.futurae.sdk.utils.FTNotificationUtils
 import com.futurae.sdk.utils.FTUriUtils
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
@@ -82,20 +79,6 @@ abstract class FuturaeActivity : AppCompatActivity() {
                     //nothing
                 }
                 .show()
-        }
-    }
-
-    private val intentFilter = IntentFilter().apply {
-        addAction(FTNotificationUtils.INTENT_ACCOUNT_UNENROLL_MESSAGE)
-        addAction(FTNotificationUtils.INTENT_APPROVE_AUTH_MESSAGE)
-        addAction(FTNotificationUtils.INTENT_GENERIC_NOTIFICATION_ERROR)
-        addAction(FTNotificationUtils.INTENT_APPROVE_CANCEL_MESSAGE)
-        addAction(FTNotificationUtils.INTENT_CUSTOM_NOTIFICATION)
-    }
-
-    private val broadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            viewModel.handleBroadcastReceivedMessage(message = BroadcastReceivedMessage.from(intent))
         }
     }
 
@@ -184,17 +167,6 @@ abstract class FuturaeActivity : AppCompatActivity() {
         intent.dataString?.takeIf { it.isNotBlank() }?.let { uriCall ->
             handleUri(uriCall)
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        LocalBroadcastManager.getInstance(this)
-            .registerReceiver(broadcastReceiver, intentFilter)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver)
     }
 
     protected fun rejectAuth(session: ApproveSession) = lifecycleScope.launch {

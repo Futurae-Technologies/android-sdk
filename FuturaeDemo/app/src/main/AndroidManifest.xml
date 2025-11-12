@@ -51,7 +51,7 @@
             android:value="barcode" />
 
         <service
-            android:name="com.futurae.sdk.messaging.FTRFcmMessagingService"
+            android:name="com.futurae.futuraedemo.ui.CustomFirebaseService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />

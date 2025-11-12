@@ -1,5 +1,7 @@
 package com.futurae.futuraedemo.ui
 
+import android.util.Log
+import com.futurae.futuraedemo.util.LocalStorage
 import com.futurae.sdk.FuturaeSDK
 import com.futurae.sdk.public_api.common.FuturaeSDKStatus
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -20,11 +22,20 @@ class CustomFirebaseService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
+        Log.d("FuturaeNotificationDebug", "onMessageReceived")
         coroutineScope.launch {
             val sdkStatus = FuturaeSDK.sdkState().value.status
             if (sdkStatus is FuturaeSDKStatus.Uninitialized || sdkStatus is FuturaeSDKStatus.Corrupted) {
-                // Make sure to initialize SDK if need be
+                try {
+                    FuturaeSDK.launch(
+                        application,
+                        LocalStorage(applicationContext).getPersistedSDKConfig()
+                    )
+                } catch (_: Exception) {
+                    // todo should be handled on production apps
+                }
             }
+
             val messageData = message.data
             FuturaeSDK.client.operationsApi.handlePushNotification(messageData)
         }
@@ -41,7 +52,7 @@ class CustomFirebaseService : FirebaseMessagingService() {
             }
             try {
                 FuturaeSDK.client.accountApi.registerFirebasePushToken(token)
-            } catch (e: Throwable) {
+            } catch (_: Throwable) {
                 // upload failed. Handle errors and retry
             }
         }
